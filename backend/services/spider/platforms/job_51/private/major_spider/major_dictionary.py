@@ -15,7 +15,7 @@ class MajorDictionary:
         """
         # 核心：获取当前文件所在的绝对路径
         # 假设此文件位于 project/utils/store.py，则向上找4层到项目根目录
-        current_file_path = Path(__file__).resolve().parent.parent.parent.parent.parent
+        current_file_path = Path(__file__).resolve().parent.parent.parent.parent.parent.parent.parent
 
         # 构建完整的 JSON 文件路径
         self.file_path = current_file_path / 'data' / 'json' / '51job_major_status.json'

@@ -27,7 +27,7 @@ class JobDataParser:
         if not text:
             return text
         cleaned = self.YEAR_CLEAN_PATTERN.sub('', text)
-        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        # cleaned = re.sub(r'\s+', ' ', cleaned).strip()
         return cleaned
 
     def parse_listings(self, data: Union[str, Dict[str, Any]]) -> Tuple[bool, Optional[List[Dict[str, Any]]], str]:

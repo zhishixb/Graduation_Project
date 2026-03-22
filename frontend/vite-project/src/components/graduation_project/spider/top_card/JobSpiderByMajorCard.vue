@@ -38,10 +38,6 @@
     <!-- 右侧：选择器与控制区 -->
     <div
       class="start-card-right"
-      :style="{
-        opacity: isAutoRunning ? 0.6 : 1,
-        pointerEvents: isAutoRunning ? 'none' : 'auto'
-      }"
     >
       <!-- 级联选择器 (非运行状态显示) -->
       <n-cascader
@@ -84,7 +80,6 @@
           <n-progress
               :style="{
                 width: '40px',
-                margin: '0 8px 12px 0',
                 '--n-font-size-circle': '10px',
                 '--n-icon-size-circle': '36px'
               }"
@@ -93,8 +88,8 @@
               :percentage="percent"
               processing
           />
+          <div style="font-size: 9px; text-align: center;">正在爬取:<br/>{{selectedMajorName}}</div>
           <n-button
-            v-if="!isAutoRunning"
             strong
             secondary
             type="warning"
@@ -160,7 +155,7 @@ const useAutoMode = ref(false)
 const isAutoRunning = ref(false)
 const autoQueue = ref<string[]>([])
 const currentAutoMajor = ref<string | null>(null)
-const AUTO_TASK_DELAY = 3000 // 3秒间隔
+const AUTO_TASK_DELAY = 8000 // 3秒间隔
 
 // --- 计算属性 ---
 const queueRemaining = computed(() => autoQueue.value.length);
@@ -649,7 +644,7 @@ onBeforeUnmount(() => {
 }
 .start-card-info-placeholder { height: 24px; display: flex; align-items: center; }
 .loading-tip { font-size: 9px; color: #999; text-align: center; margin-top: 15px; }
-.right-running-status { display: flex; gap: 10px; flex-direction: column; justify-content: center; align-items: center; }
+.right-running-status { display: flex; gap: 5px; flex-direction: column; justify-content: center; align-items: center; }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-5px); }
 @keyframes slideIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }

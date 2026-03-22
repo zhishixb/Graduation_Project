@@ -11,6 +11,9 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    CompareCard: typeof import('./components/graduation_project/process/left_card/CompareCard.vue')['default']
+    ControlCard: typeof import('./components/graduation_project/process/left_card/ControlCard.vue')['default']
+    ControllCard: typeof import('./components/graduation_project/process/left_card/ControllCard.vue')['default']
     CountCard: typeof import('./components/graduation_project/spider/bottom_card/CountCard.vue')['default']
     JobSpiderByMajorCard: typeof import('./components/graduation_project/spider/top_card/JobSpiderByMajorCard.vue')['default']
     JobSpiderByPositionCard: typeof import('./components/graduation_project/spider/top_card/JobSpiderByPositionCard.vue')['default']
@@ -26,6 +29,8 @@ declare module 'vue' {
     NMenu: typeof import('naive-ui')['NMenu']
     NMessageProvider: typeof import('naive-ui')['NMessageProvider']
     NProgress: typeof import('naive-ui')['NProgress']
+    NSpin: typeof import('naive-ui')['NSpin']
+    NTag: typeof import('naive-ui')['NTag']
     NTooltip: typeof import('naive-ui')['NTooltip']
     NumberCard: typeof import('./components/graduation_project/spider/top_card/NumberCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

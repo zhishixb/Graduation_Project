@@ -1,6 +1,8 @@
 <template>
   <div class="process-container">
     <div class="left-process-container">
+      <ControlCard></ControlCard>
+      <CompareCard></CompareCard>
     </div>
     <div class="right-process-container">
       <div class="top-right-process-container">
@@ -16,6 +18,8 @@
 <script setup lang="ts">
 import MajorJobProcessCard from '@/components/graduation_project/process/right_card/top_right_card/MajorJobProcessCard.vue'
 import MajorProcessCard from '@/components/graduation_project/process/right_card/top_right_card/MajorProcessCard.vue'
+import ControlCard from "@/components/graduation_project/process/left_card/ControlCard.vue";
+import CompareCard from "@/components/graduation_project/process/left_card/CompareCard.vue";
 
 </script>
 
@@ -58,13 +62,13 @@ import MajorProcessCard from '@/components/graduation_project/process/right_card
 
 .middle-right-process-container{
   width: 100%;
-  height: 155px;
+  height: 165px;
   gap: 20px;
 }
 
 .bottom-right-process-container{
   width: 100%;
-  height: 155px;
+  height: 165px;
 }
 
 </style>

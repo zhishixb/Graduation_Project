@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from backend.api import spider
+from backend.api import process
 from backend.routers import spider_ws
 from backend.websocket_manager import manager
 
@@ -63,6 +64,8 @@ app.add_middleware(
 )
 
 app.include_router(spider.router)
+
+app.include_router(process.router)
 
 # ✅ 注册 WebSocket 路由 (不带前缀)
 app.include_router(spider_ws.router)

@@ -36,7 +36,7 @@ class JobDataParser:
         # 移除年限括号
         cleaned = self.YEAR_CLEAN_PATTERN.sub('', text)
         # 可选：进一步清理多余空格或连续空白
-        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        # cleaned = re.sub(r'\s+', ' ', cleaned).strip()
         return cleaned
 
     def parse_listings(self, data: Union[str, Dict[str, Any]]) -> Tuple[bool, Optional[List[Dict[str, Any]]], str]:

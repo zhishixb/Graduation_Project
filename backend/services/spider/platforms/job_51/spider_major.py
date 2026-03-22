@@ -11,7 +11,7 @@ from backend.services.spider.platforms.job_51.private.major_spider.url_manager i
 from backend.services.spider.platforms.job_51.public.browser_manager import BrowserSessionManager
 from backend.services.spider.platforms.job_51.public.spider_run_signal import SpiderRunSignal
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _DEFAULT_FILE_PATH_BASE = _PROJECT_ROOT / 'data' / 'json' / '51job_major_data.json'
 _DEFAULT_DB_PATH_BASE = _PROJECT_ROOT / 'data' / 'db' / 'job_data.db'
 
