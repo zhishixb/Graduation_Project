@@ -1,18 +1,22 @@
 <template>
   <div class="graduation-project-container">
     <SideMenu></SideMenu>
+
     <div class="graduation-project-child-page">
-      <transition name="fade" mode="out-in">
-        <RouterView :key="$route.fullPath" />
-      </transition>
+      <!-- 1. RouterView 改为使用 v-slot -->
+      <router-view v-slot="{ Component, route }">
+        <!-- 2. transition 包裹 component -->
+        <transition name="fade" mode="out-in">
+          <!-- 3. 动态渲染组件，并绑定 key -->
+          <component :is="Component" :key="route.fullPath" />
+        </transition>
+      </router-view>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import SideMenu from "@/components/graduation_project/menu/SideMenu.vue";
-
-
 </script>
 
 <style scoped>

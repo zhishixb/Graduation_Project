@@ -1,6 +1,8 @@
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Dict, Any, Optional, List, Tuple
 from loguru import logger  # 假设你的类在这个路径
 
+from backend.services.process.count.training_data_count import TrainingDataRecorder
 from backend.services.spider.platforms.job_51.private.major_spider.major_dictionary import MajorDictionary
 from backend.services.spider.platforms.job_51.private.position_spider.job_dictionary import JobDictionary
 
@@ -73,3 +75,22 @@ class JobDictController:
                 "data": None,
                 "message": f"服务器内部错误: {str(e)}"
             }
+
+
+class TrainingDataCountController:
+
+    def __init__(self):
+        self.project_root = Path(__file__).resolve().parent.parent
+        self.default_db_path = self.project_root / 'data' / 'db' / 'job_data.db'
+        self.default_csv_path = self.project_root / 'data' / 'other' / 'training_data.csv'
+
+        self.data_controller = TrainingDataRecorder(self.default_db_path, self.default_csv_path)
+
+    def get_training_data_count(self) -> Dict[str, Any]:
+        temp = self.data_controller.update_training_data_count()
+        data = self.data_controller.get_last_n_records()
+        return {
+            "success": True,
+            "data": data,
+            "message": ""
+        }

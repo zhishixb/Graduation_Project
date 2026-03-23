@@ -29,7 +29,6 @@ class JobDataParser:
         """
         清洗 jobDescribe 文本：
         - 移除括号内的年限描述（如 (2年及以上)）
-        - 可扩展其他清洗规则
         """
         if not text:
             return text
@@ -40,6 +39,15 @@ class JobDataParser:
         return cleaned
 
     def parse_listings(self, data: Union[str, Dict[str, Any]]) -> Tuple[bool, Optional[List[Dict[str, Any]]], str]:
+        """
+
+        Args:
+            data: 网页返回的数据
+
+        Returns:
+            解析得到的岗位数据
+
+        """
         if data is None:
             return False, None, "输入数据为空 (None)"
 
@@ -75,6 +83,15 @@ class JobDataParser:
         return True, extracted_data, message
 
     def parse_single_item(self, item_dict: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        略微清洗岗位描述并组装为字典
+
+        Args:
+            item_dict: 岗位数据
+
+        Returns:
+            处理后的岗位数据字典
+        """
         job_describe = item_dict.get("jobDescribe")
 
         if not job_describe:

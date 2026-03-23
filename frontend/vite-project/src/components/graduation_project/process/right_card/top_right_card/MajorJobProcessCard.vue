@@ -1,15 +1,33 @@
 <template>
-  <div class="major-job-process-card-container" id="major-job-process-card-container">
-    <!-- 头部 -->
-    <div class="major-job-process-card-header">
-      <div class="major-job-process-card-title">微调数据清洗</div>
+  <div class="job-process-card-container" :class="`status-${status}`">
+
+    <!-- 1. 头部：标题 + 状态徽章 -->
+    <div class="job-process-card-header">
+      <div class="job-process-card-title-wrapper">
+        <div class="job-process-card-title">{{ cardTitle }}</div>
+        <!-- 状态徽章 -->
+        <n-tag
+          v-if="status !== 'idle'"
+          :type="badgeType"
+          size="small"
+          round
+          class="status-badge"
+        >
+          <template #icon>
+            <n-icon v-if="status === 'success'"><CheckmarkCircleOutline /></n-icon>
+            <n-icon v-else-if="status === 'warning'"><TimeOutline /></n-icon>
+            <n-icon v-else-if="status === 'loading'"><SyncOutline /></n-icon>
+          </template>
+          {{ badgeText }}
+        </n-tag>
+      </div>
+
       <n-button
         circle
         size="small"
         :loading="isLoadingData"
-        :disabled="isRunning"
         @click="openDrawer"
-        class="major-job-process-action-btn"
+        class="job-process-action-btn"
         type="info"
         strong
         secondary
@@ -20,282 +38,264 @@
       </n-button>
     </div>
 
-    <!-- 主体占位 -->
-    <div class="start-card-right">
-      <div v-if="contentText && !selectedMajorName" class="status-text" :style="{ color: contentColor }">
-        {{ contentText }}
-      </div>
+    <!-- 2. 中间：详细统计信息 -->
+    <div class="job-process-stats">
     </div>
 
-    <n-drawer
-      v-model:show="isDrawerOpen"
-      width="100%"
-      placement="left"
-      :mask="false"
-      :trap-focus="false"
-      :block-scroll="false"
-      to="#major-job-process-card-container"
-      class="local-drawer"
-    >
-      <n-drawer-content closable style="height: 100%; display: flex; flex-direction: column;">
-        <n-cascader
-          v-model:value="selectedMajorName"
-          :options="processedData.options"
-          :disabled="isLoadingData || isRunning || !processedData.ready"
-          placeholder="选专业"
-          size="small"
-          clearable
-          filterable
-          show-path
-          :emit-path="false"
-          class="major-cascader"
-          @update:value="handleMajorChange"
-          :to="'body'"
-          style="width: 100%;"
-        />
-
-        <!-- 可选：增加一些提示文字 -->
-        <div style="font-size: 12px; color: #999; margin-top: 8px; text-align: center;">
-          请选择专业以开始
-        </div>
-
-      </n-drawer-content>
-    </n-drawer>
+    <!-- 3. 底部：操作按钮 -->
+    <div class="job-process-footer">
+      <n-button
+        size="tiny"
+        :type="btnType"
+        :loading="isRunning"
+        :disabled="isRunning"
+        @click="handleAction"
+        class="job-process-start-btn"
+        secondary
+        round
+        strong
+      >
+        <template #icon>
+          <n-icon v-if="isCompleted"><RefreshOutline /></n-icon>
+          <n-icon v-else><PlayOutline /></n-icon>
+        </template>
+        {{ btnText }}
+      </n-button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// ... (脚本部分保持不变，逻辑与之前一致) ...
-import { useMessage } from 'naive-ui'
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted } from 'vue';
+import {
+  AddCircleOutline, CheckmarkCircleOutline, TimeOutline,
+  SyncOutline, RefreshOutline, PlayOutline
+} from "@vicons/ionicons5";
+import { useMessage } from 'naive-ui';
+// 假设你有这两个 API 函数
+import { cleanMajors, checkMajorStatus } from "@/apis/process";
 
-import {AddCircleOutline} from '@vicons/ionicons5'
+const message = useMessage();
 
-import {getMajorsList} from "@/apis/spider.ts";
 
-function isRawDataMap(obj: unknown): obj is RawDataMap {
-  if (typeof obj !== 'object' || obj === null) return false;
-  for (const key in obj) {
-    const secondLevel = obj[key];
-    if (typeof secondLevel !== 'object' || secondLevel === null) return false;
-    for (const subKey in secondLevel) {
-      const thirdLevel = secondLevel[subKey];
-      if (typeof thirdLevel !== 'object' || thirdLevel === null) return false;
-      for (const finalKey in thirdLevel) {
-        const detail = thirdLevel[finalKey];
-        if (typeof detail !== 'object' || detail === null || !('state' in detail)) return false;
-      }
-    }
-  }
-  return true;
-}
+const status = ref<'idle' | 'loading' | 'success' | 'warning' | 'error'>('idle');
+const isLoadingData = ref(false); // 用于右上角按钮的 loading
 
-const message = useMessage()
-const selectedMajorName = ref<string | null>(null)
-const isLoadingData = ref(false)
-const isRunning = ref(false)
-const contentText = ref('等待选择...')
-const contentColor = ref('#969696')
-const rawCascaderData = ref<RawDataMap | null>(null)
-const isDrawerOpen = ref(false)
+// --- 计算属性 ---
+const isCompleted = computed(() => status.value === 'success');
+const isRunning = computed(() => status.value === 'loading');
+const cardTitle = "专业数据清洗";
 
-interface MajorDetail { state: number; [key: string]: any }
-interface RawDataMap { [category: string]: { [secondary: string]: { [majorName: string]: MajorDetail } } }
-interface CascaderOption { label: string; value: string; disabled?: boolean; children?: CascaderOption[]; _pathInfo?: { category: string; secondary: string } }
-interface ProcessedData { ready: boolean; options: CascaderOption[]; pathMap: Map<string, { category: string; secondary: string }>; }
+// 徽章逻辑
+const badgeType = computed(() => {
+  if (status.value === 'success') return 'success';
+  if (status.value === 'warning') return 'warning';
+  if (status.value === 'error') return 'error';
+  if (status.value === 'loading') return 'info';
+  return 'default';
+});
 
-const processedData = computed<ProcessedData>(() => {
-  if (!rawCascaderData.value)
-    return { ready: false, options: [], pathMap: new Map() }
-  const options: CascaderOption[] = []
-  const pathMap = new Map<string, { category: string; secondary: string }>()
-  for (const [category, secondaries] of Object.entries(rawCascaderData.value)) {
-    if (typeof secondaries !== 'object' || secondaries === null)
-      continue
-    const categoryNode: CascaderOption = {
-      label: category, value: category, children: []
-    }
-    for (const [secondary, majors] of Object.entries(secondaries)) {
-      if (typeof majors !== 'object' || majors === null) continue
-      const secondaryNode: CascaderOption = {
-        label: secondary,
-        value: secondary,
-        children: []
-      }
-      let hasValidMajor = false
-      for (const [majorName, detail] of Object.entries(majors)) {
-        if (!detail || typeof detail.state !== 'number')
-          continue
-        const majorNode: CascaderOption = {
-          label: majorName, value: majorName,
-          disabled: detail.state === 0 || detail.state === 1,
-          _pathInfo: { category, secondary }
-        }
-        secondaryNode.children!.push(majorNode)
-        pathMap.set(majorName, { category, secondary })
-        hasValidMajor = true
-      }
-      if (hasValidMajor)
-        categoryNode.children!.push(secondaryNode)
-    }
-    if (categoryNode.children!.length > 0)
-      options.push(categoryNode)
-  }
-  return { ready: true, options, pathMap }
-})
+const badgeText = computed(() => {
+  if (status.value === 'success') return '已完成';
+  if (status.value === 'warning') return '待处理';
+  if (status.value === 'loading') return '执行中';
+  if (status.value === 'error') return '异常';
+  return '';
+});
 
-const fetchCountJobs = async () => {
+// 按钮逻辑
+const btnType = computed(() => {
+  if (status.value === 'error') return 'error';
+  if (status.value === 'success') return 'success'; // 完成后显示绿色，提示可重跑
+  return 'info';
+});
+
+const btnText = computed(() => {
+  if (status.value === 'loading') return '清洗中...';
+  if (status.value === 'success') return '重新运行';
+  if (status.value === 'warning') return '继续清洗';
+  if (status.value === 'error') return '重试';
+  return '开始';
+});
+
+// --- 方法 ---
+
+// 1. 检查状态 (初始化调用)
+const fetchStatus = async () => {
   try {
-    const res = await getMajorsList()
+    status.value = 'idle'; // 重置为中间态，防止闪烁
+    const res = await checkMajorStatus(); // 调用后端 is_majors_cleand
 
-    if (res && typeof res === 'object' && 'success' in res) {
-      if (res.success && res.data && isRawDataMap(res.data)) {
-        rawCascaderData.value = res.data
-        contentText.value = '数据就绪，请选择专业'
-        contentColor.value = '#37ddbf'
-        console.log("✅ 数据加载成功，条目数:", Object.keys(res.data).length)
-      } else {
-        rawCascaderData.value = {}
-        contentText.value = res.message || '数据格式不正确'
-        contentColor.value = '#ff4d4f'
-        console.warn("⚠️ 数据格式不正确:", res.data)
-      }
+    if (res.success) {
+      status.value = 'success';
     } else {
-      rawCascaderData.value = {}
-      contentText.value = 'API响应异常'
-      contentColor.value = '#ff4d4f'
+      status.value = 'error';
+      message.error(res.message);
     }
-  } catch (e) {
-    console.error('❌ 请求失败:', e)
-    message.error('加载数据失败')
-    rawCascaderData.value = {}
-    contentText.value = '加载失败'
-    contentColor.value = '#ff4d4f'
-  } finally {
-    isLoadingData.value = false
+  } catch (e: any) {
+    status.value = 'error';
+    message.error(`状态检查失败：${e.message}`);
   }
-}
+};
 
-const handleError = (msg: string, isManual: boolean) => {
-  rawCascaderData.value = {};
-  contentText.value = msg;
-  contentColor.value = '#ff4d4f';
-  if (isManual)
-    message.error(msg)
-}
+// 2. 执行动作 (开始/重试)
+const handleAction = async () => {
+  if (isRunning.value) return;
+  status.value = 'loading';
+
+  try {
+    const res = await cleanMajors();
+
+    if (res.success) {
+      message.success(res.message);
+      // 任务完成后，立即刷新状态以获取最新统计
+      await fetchStatus();
+    } else {
+      status.value = 'error';
+      message.error(res.message);
+    }
+  } catch (e: any) {
+    status.value = 'error';
+    message.error(`执行失败：${e.message}`);
+  }
+};
+
 const openDrawer = () => {
-  if (!isRunning.value)
-    isDrawerOpen.value = true;
-  else
-    message.warning('运行中不可用')
-}
+  // 打开配置抽屉
+  console.log("Open config drawer");
+};
 
-const handleMajorChange = (value: string | null, path: any[]) => {
-  selectedMajorName.value = value
-  if (value && path && path.length >= 3) {
-     // 简单处理路径显示
-     const fullPath = path.map(p => p.label).join(' - ')
-     contentText.value = fullPath
-     contentColor.value = '#6cb1ff'
-  } else if (!value) {
-    contentText.value = '等待选择...'; contentColor.value = '#969696'
-  }
-}
-onMounted(() => fetchCountJobs(false))
-onBeforeUnmount(() => { if (retryTimer) clearTimeout(retryTimer) })
+// 生命周期：挂载时自动检查
+onMounted(() => {
+  fetchStatus();
+});
 </script>
 
 <style scoped>
-.major-job-process-card-container {
-  width: 160px;
-  height: 150px;
+.job-process-card-container {
+  width: 165px;
+  height: 140px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   padding: 12px;
   border-radius: 8px;
-  background-color: #fefefe;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
   position: relative;
-  overflow: hidden; /* 必须保留，用于裁剪抽屉 */
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid #eee;
 }
 
-.major-job-process-card-header {
+/* 状态样式修饰 */
+.job-process-card-container.status-success {
+  border-color: #18a058;
+  background-color: #f0f9f4;
+}
+.job-process-card-container.status-warning {
+  border-color: #f0a020;
+  background-color: #fffbe6;
+}
+.job-process-card-container.status-error {
+  border-color: #d03050;
+  background-color: #fff0f1;
+}
+.job-process-card-container.status-loading {
+  border-color: #2080f0;
+  background-color: #f0faff;
+}
+
+.job-process-card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start; /* 顶部对齐 */
   width: 100%;
-  z-index: 1;
+  margin-bottom: 8px;
 }
 
-.major-job-process-card-title {
+.job-process-card-title-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 110px;
+}
+
+.job-process-card-title {
   font-weight: bold;
   font-size: 14px;
   color: #333;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 110px;
 }
 
-.major-job-process-action-btn {
+.status-badge {
+  font-size: 10px;
+  transform: scale(0.9);
+  transform-origin: left center;
+  height: 18px;
+}
+
+.job-process-action-btn {
   flex-shrink: 0;
   width: 24px;
   height: 24px;
-  z-index: 1;
 }
 
-.start-card-right {
+/* 中间统计区域 */
+.job-process-stats {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  position: relative;
-  z-index: 1;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+  padding: 4px 0;
 }
 
-.status-text {
-  font-size: 11px;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* --- 关键 CSS：修复局部抽屉样式 --- */
-
-/* 1. 强制抽屉绝对定位并填满父容器 */
-:deep(.local-drawer .n-drawer) {
-  position: absolute !important;
-  top: 0;
-  left: 0;
-  width: 100% !important;
-  height: 100% !important;
-  box-shadow: none; /* 内部不需要大阴影 */
-  background-color: #fff;
-}
-
-/* 2. 确保内容区域占满剩余空间 */
-:deep(.local-drawer .n-drawer-content) {
-  height: 100%;
+.stat-item {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
 }
 
-:deep(.local-drawer .n-drawer-content__body) {
-  padding: 12px;
-  flex: 1;
-  overflow-y: auto; /* 允许内部滚动 */
+.stat-label {
+  opacity: 0.8;
 }
 
-:deep(.local-drawer .n-drawer-header) {
-  padding: 8px 12px;
-  min-height: auto;
-  border-bottom: 1px solid #f0f0f0;
+.stat-value {
+  font-weight: bold;
+  font-family: monospace; /* 数字等宽显示更整齐 */
 }
 
-.major-cascader {
+.success-text { color: #18a058; }
+.warning-text { color: #f0a020; }
+
+.stat-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #2080f0;
+}
+
+.job-process-footer {
+  display: flex;
+  justify-content: center;
   width: 100%;
+  margin-top: auto;
+}
+
+.job-process-start-btn {
+  width: 100%;
+  font-size: 12px;
+  height: 28px;
+}
+
+.job-process-start-btn{
+  width: 105px;
+  margin-left: -33px;
 }
 </style>

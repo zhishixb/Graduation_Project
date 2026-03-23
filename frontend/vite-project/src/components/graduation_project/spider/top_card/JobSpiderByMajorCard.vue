@@ -1,5 +1,5 @@
 <template>
-  <div class="search-spider-card" id="spider-major-51job-card-container">
+  <div class="search-spider-card" :class="`status-${status}`" id="spider-major-51job-card-container" >
     <!-- 左侧：标题与状态 -->
     <div class="start-card-left">
       <div class="search-spider-card-title">
@@ -25,7 +25,7 @@
         <n-button
           strong
           secondary
-          :type="isRunning ? 'info' : 'error'"
+          :type="isRunning ? 'info' : 'warning'"
           :loading="isRunning"
           style="border-radius: 30px; height: 30px; font-size: 10px; width: 100%; margin-top: 4px"
           @click="handleStartClick"
@@ -94,7 +94,7 @@
             secondary
             type="warning"
             size="small"
-            style="width: 100%; height: 30px; font-size: 10px; border-radius: 30px"
+            style="width: 100%; height: 30px; font-size: 10px; border-radius: 30px; margin-bottom: 5px"
             @click="handleStopClick"
           >
             暂停
@@ -117,6 +117,8 @@ interface MajorDetail { state: number; [key: string]: any }
 interface RawDataMap { [category: string]: { [secondary: string]: { [majorName: string]: MajorDetail } } }
 interface CascaderOption { label: string; value: string; disabled?: boolean; children?: CascaderOption[]; _fullPath?: { category: string; secondary: string; major: string } }
 interface MajorPathInfo { category: string; secondary: string; }
+
+const status = ref<'idle' | 'loading' | 'success' | 'warning' | 'error'>('idle');
 
 // 类型守卫
 function isRawDataMap(obj: unknown): obj is RawDataMap {
@@ -171,7 +173,7 @@ const fetchCountJobs = async () => {
         rawCascaderData.value = res.data
         if (!isAutoRunning.value) {
             contentText.value = '数据就绪，请选择专业'
-            contentColor.value = '#37ddbf'
+            contentColor.value = '#3eaf18'
         }
         console.log("✅ 数据加载成功")
       } else {
@@ -293,6 +295,7 @@ const prepareAutoQueue = (): string[] => {
 
 // --- 点击开始按钮 ---
 const handleStartClick = () => {
+  status.value = 'loading'
   if (isRunning.value) {
     message.warning('任务正在运行中')
     return
@@ -338,7 +341,7 @@ const startSpider = () => {
   // 4. 更新 UI 并执行
   logs.value.unshift(`[手动] 开始任务: ${selectedMajorName.value}`)
   contentText.value = `正在启动: ${selectedMajorName.value}...`
-  contentColor.value = '#6cb1ff'
+  contentColor.value = '#6c84ff'
 
   executeSpiderTask(pathInfo, selectedMajorName.value)
 }
@@ -583,9 +586,11 @@ const handleTaskEnd = async () => {
   resetUIState()
   message.info("运行结束")
   await fetchCountJobs()
+  status.value = 'warning'
 }
 
 onMounted(() => {
+  status.value = 'warning'
   fetchCountJobs()
 })
 
@@ -597,15 +602,43 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 保持原有样式，仅添加少量新样式 */
 .search-spider-card {
   width: 230px;
   height: 150px;
   display: flex;
   gap: 12px;
-  /* 确保容器不被压缩 */
-  flex-shrink: 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  position: relative;
+  transition: all 0.3s ease;
+  border: 1px solid #f0a020; /* 橙色边框 */
+  z-index: 100;
+  background-color: #fefefe;
 }
+
+
+.search-spider-card.status-loading {
+  border-color: #2080f0;
+}
+
+.search-spider-card.status-error {
+  border-color: #d03050;
+}
+
+.search-spider-card.status-success {
+  border-color: #18a058;
+}
+
+.search-spider-card.status-warning {
+  border-color: #f0a020;
+}
+
+.search-spider-card.status-idle {
+  border-color: #e0e0e0;
+}
+
+
 .start-card-left {
   width: 90px;
   height: 120px;

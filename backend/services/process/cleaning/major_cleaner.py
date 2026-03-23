@@ -59,7 +59,7 @@ class MajorCleaner:
         if not parts:
             return f"原始信息：{learn_what[:50]}..." if learn_what else "无详细信息"
 
-        return "; ".join(parts)
+        return "；".join(parts)
 
     def run(self) -> Tuple[bool, str]:
         """

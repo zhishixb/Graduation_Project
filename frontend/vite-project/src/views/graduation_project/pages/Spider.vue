@@ -1,9 +1,8 @@
 <template>
   <div class="spider-container">
+    <div class="header_spider-container"></div>
     <div class="spider-top-container">
-      <div class="job-spider-card">
-        <JobSpiderByMajorCard></JobSpiderByMajorCard>
-      </div>
+      <JobSpiderByMajorCard></JobSpiderByMajorCard>
       <div class="job-spider-card">
       </div>
       <div class="job-spider-card">
@@ -12,6 +11,9 @@
       <div class="job-spider-card"></div>
     </div>
     <div class="spider-bottom-container">
+      <TrainingCountCard></TrainingCountCard>
+      <div class="bottom-job-spider-card"></div>
+      <div class="bottom-job-spider-card"></div>
     </div>
   </div>
 </template>
@@ -19,6 +21,7 @@
 <script setup lang="ts">
 import JobSpiderByMajorCard from "@/components/graduation_project/spider/top_card/JobSpiderByMajorCard.vue";
 import JobSpiderByPositionCard from "@/components/graduation_project/spider/top_card/JobSpiderByPositionCard.vue";
+import TrainingCountCard from  "@/components/graduation_project/spider/bottom_card/TrainingCountCard.vue"
 
 </script>
 
@@ -34,9 +37,17 @@ import JobSpiderByPositionCard from "@/components/graduation_project/spider/top_
   flex-direction: column;
 }
 
+.header_spider-container{
+  width: 980px;
+  height: 50px;
+  border-radius: 8px;
+  background-color: #fefefe;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .spider-top-container{
   width: 100%;
-  height: 170px;
+  height: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -44,8 +55,9 @@ import JobSpiderByPositionCard from "@/components/graduation_project/spider/top_
 }
 
 .spider-bottom-container{
-  width: 100%;
-  height: 370px;
+  width: 980px;
+  height: 320px;
+  gap: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -54,6 +66,16 @@ import JobSpiderByPositionCard from "@/components/graduation_project/spider/top_
 .job-spider-card{
   width: 230px;
   height: 150px;
+  border-radius: 8px;
+  display: flex;
+  gap: 20px;
+  background-color: #fefefe;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.bottom-job-spider-card{
+  width: 230px;
+  height: 320px;
   border-radius: 8px;
   display: flex;
   gap: 20px;

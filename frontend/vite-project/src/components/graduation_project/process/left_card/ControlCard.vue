@@ -9,7 +9,7 @@
 <style scoped>
 .control-card-cation {
   width: 620px;
-  height: 150px;
+  height: 140px;
   display: flex;
   flex-direction: column;
   padding: 12px;

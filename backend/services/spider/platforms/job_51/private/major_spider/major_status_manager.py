@@ -7,11 +7,6 @@ from backend.services.spider.platforms.job_51.public.base_json_store import Base
 class MajorStatusManager(BaseJsonStore):
     """
     管理层级化爬虫状态 (学科 -> 二级学科 -> 专业 -> [岗位列表])。
-
-    【重要使用规范】
-    1. 本类设计为“短生命周期”对象。
-    2. 建议在外部配合锁使用 (见 open_spider_state_store 上下文管理器)。
-    3. 每次实例化都会重新加载磁盘数据，确保数据新鲜。
     """
 
     def __init__(self, file_path: Path, subject: str, secondary_subject: str, major: str):
@@ -50,7 +45,9 @@ class MajorStatusManager(BaseJsonStore):
         return node
 
     def _get_job_node(self, job_name: str, create_if_missing: bool = False) -> Optional[Dict[str, Any]]:
-        """获取特定岗位的节点"""
+        """
+        获取特定岗位的节点
+        """
         # if job_name not in self._current_major_data:
         #     if create_if_missing:
         #         self._current_major_data[job_name] = {
@@ -65,7 +62,9 @@ class MajorStatusManager(BaseJsonStore):
     # --- 业务逻辑 ---
 
     def update_target_counts(self, updates: List[Tuple[str, int]]) -> int:
-        """批量更新岗位的目标数量"""
+        """
+        批量更新岗位的目标数量
+        """
         updated_count = 0
         for job_name, new_count in updates:
             job_info = self._get_job_node(job_name, create_if_missing=True)
@@ -85,7 +84,7 @@ class MajorStatusManager(BaseJsonStore):
     def get_next_pending_job(self) -> Optional[Tuple[str, int, int]]:
         """
         获取下一个待处理的岗位。
-        返回: (job_name, target_count, current_count) 或 None
+        returns: (job_name, target_count, current_count) 或 None
         """
         for job_name, job_info in self._current_major_data.items():
             if not isinstance(job_info, dict):
@@ -105,6 +104,16 @@ class MajorStatusManager(BaseJsonStore):
         return None
 
     def mark_job_as_completed(self, job_name: str) -> bool:
+        """
+        标记岗位为爬取完成
+
+        Args:
+            job_name: 岗位名称
+
+        Returns:
+            是否标记完成
+
+        """
         job_info = self._get_job_node(job_name)
         if not job_info:
             return False
@@ -118,7 +127,9 @@ class MajorStatusManager(BaseJsonStore):
         return True
 
     def update_fetched_count(self, job_name: str, increment: int = 1) -> bool:
-        """增加已抓取数量并立即保存"""
+        """
+        增加已抓取数量并立即保存
+        """
         try:
             job_info = self._get_job_node(job_name, create_if_missing=True)
             if not job_info:
@@ -139,7 +150,6 @@ class MajorStatusManager(BaseJsonStore):
         """
         判断是否所有任务都已完成。
         逻辑：只要存在任何一个 status != 'completed' 的岗位，就返回 False。
-        (不再特殊处理 target_count=0 的情况，0 目标的任务也必须显式标记为 completed 才算完成)
         """
         if not self._current_major_data:
             return True  # 【建议修改】空列表通常视为“没有任务需要完成”，即已完成。
@@ -156,7 +166,9 @@ class MajorStatusManager(BaseJsonStore):
         return True
 
     def get_progress_summary(self) -> Dict[str, int]:
-        """获取当前专业的进度摘要"""
+        """
+        获取当前专业的进度摘要
+        """
         total_target = 0
         total_current = 0
         completed_count = 0
@@ -177,28 +189,3 @@ class MajorStatusManager(BaseJsonStore):
             "completed_jobs": completed_count,
             "total_jobs": len(self._current_major_data)
         }
-
-
-import json
-import os
-import tempfile
-from pathlib import Path
-import sys
-
-# 确保项目根目录在路径中，以便导入 backend 模块
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
-_FILE_PATH = _PROJECT_ROOT / 'data' / 'json' / '51job_major_data.json'
-
-def test_with_sample_data():
-    print("🚀 开始测试 MajorStatusManager (基于提供的经济统计学数据)...\n")
-
-    test = MajorStatusManager(_FILE_PATH, "经济学", "经济学类", "经济统计学")
-
-    print(test.get_all_job_names())
-    print(test.are_all_jobs_completed())
-    print(test.get_progress_summary())
-
-
-
-if __name__ == "__main__":
-    test_with_sample_data()

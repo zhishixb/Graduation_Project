@@ -1,41 +1,90 @@
-from typing import Iterator, Optional
+# backend/services/process/cleaning/job_data_reader.py
+import re
+from typing import Optional, Tuple
+from pathlib import Path  # 1. 导入 Path
 from loguru import logger
+from datetime import datetime
+
 from backend.services.process.cleaning.public.base_database_manager import BaseDatabaseManager
 
 
 class JobDataReader(BaseDatabaseManager):
     """
-    职位描述读取器
+    涉及数据库：job_data（存储按照专业就业方向爬取的微调前体数据）
+    用于清洗数据时和数据库的交互
     """
 
-    def __init__(self, db_path: str, major_name: str):
-        super().__init__(db_path)
-        self.table_name = major_name
+    TABLE_NAME = "parsed_jobs"
 
-        # 更严格的表名校验 (只允许字母、数字、下划线、中文)
-        import re
-        if not re.match(r"^[\w\u4e00-\u9fa5]+$", major_name):
-            raise ValueError(f"Invalid table name: {major_name}")
+    def __init__(self, db_path: Path):  # 2. 修改类型提示为 Path
+        super().__init__(str(db_path))
 
-    def get_descriptions(self) -> Iterator[Optional[str]]:
+        logger.debug(f"初始化全局职位读取器：{db_path}")  # loguru 可以直接打印 Path 对象
+
+    def get_next_unprocessed(self) -> Optional[Tuple[str, str, str]]:
         """
-        流式生成器：逐条产出 job_description
-        注意：调用者需要确保在使用完生成器后调用 reader.close()
+        获取全库中任意一条未处理的数据。
+        :return: (job_id, description) 或 None
         """
-        # 构建 SQL (表名无法参数化，必须拼接，但已做过校验)
-        sql = f'SELECT job_description FROM "{self.table_name}"'
+        sql = f"""
+        SELECT job_id, major_name, job_description 
+        FROM "{self.TABLE_NAME}" 
+        WHERE processed_at IS NULL 
+        LIMIT 1;
+        """
+        rows = self.execute_query(sql)
 
-        try:
-            # 直接使用父类的流式方法
-            # 不需要 with self，因为连接已经在 __init__ 中建立
-            for row in self.execute_stream_query(sql):
-                desc = row.get('job_description')
-                # 过滤掉 None 或空字符串 (可选)
-                if desc is not None:
-                    yield desc.strip() if isinstance(desc, str) else desc
-        except Exception as e:
-            logger.error(f"读取 {self.table_name} 描述失败：{e}")
-            raise
-        # 注意：这里不要调用 self.close()！
-        # 因为生成器可能被外部 break 或提前停止，导致 close 无法执行。
-        # 应该由控制该 Reader 生命周期的代码 (如 Controller) 来调用 close()。
+        if not rows:
+            return None
+
+        row = rows[0]
+        job_id = row.get('job_id')
+        major_name = row.get('major_name')
+        desc = row.get('job_description')
+
+        if not job_id or not desc:
+            if job_id:
+                self.mark_processed(job_id)
+            return None
+
+        return job_id, major_name, desc.strip()
+
+    def get_pending_count(self) -> int:
+        """
+        返回全库未处理记录数
+        """
+        sql = f"SELECT COUNT(*) as c FROM \"{self.TABLE_NAME}\" WHERE processed_at IS NULL"
+        res = self.execute_query(sql)
+        return res[0]['c'] if res else 0
+
+    def mark_processed(self, job_id: str) -> bool:
+        """
+        按照job_id标记为已处理
+        """
+        sql = f"""
+        UPDATE "{self.TABLE_NAME}" 
+        SET processed_at = ? 
+        WHERE job_id = ?;
+        """
+        ts = datetime.now().isoformat()
+        affected = self.execute_update(sql, (ts, job_id))
+        return affected > 0
+
+    def get_stats(self) -> dict:
+        """
+        获取全库统计信息
+        """
+        total_sql = f"SELECT COUNT(*) as c FROM \"{self.TABLE_NAME}\""
+        pending_sql = f"SELECT COUNT(*) as c FROM \"{self.TABLE_NAME}\" WHERE processed_at IS NULL"
+
+        total_res = self.execute_query(total_sql)
+        pending_res = self.execute_query(pending_sql)
+
+        total = total_res[0]['c'] if total_res else 0
+        pending = pending_res[0]['c'] if pending_res else 0
+
+        return {
+            "total": total,
+            "pending": pending,
+            "processed": total - pending
+        }

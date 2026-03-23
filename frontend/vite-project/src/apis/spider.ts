@@ -7,3 +7,7 @@ export const getMajorsList = () => {
 export const getJobList = () => {
   return request.get('/api/spider/allJobs')
 }
+
+export const getTrainingDataList = () => {
+  return request.get('/api/spider/getTrainingDataCount')
+}

@@ -3,7 +3,7 @@ from loguru import logger
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from backend.controllers.clean_data_controller import CleanDataController
+from backend.controllers.clean_data_controller import CleanMajorController
 
 router = APIRouter(prefix="/api/process", tags=["数据处理"])
 
@@ -13,7 +13,7 @@ executor = ThreadPoolExecutor(max_workers=5)
 
 @router.get("/checkMajorStatus")
 async def check_major_status():
-    controller = CleanDataController()
+    controller = CleanMajorController()
     res = controller.is_majors_cleand()
     return res
 
@@ -29,7 +29,7 @@ async def clean_majors():
     try:
         # 1. 定义同步执行函数
         def run_cleaning():
-            controller = CleanDataController()
+            controller = CleanMajorController()
             return controller.clean_major_data()
 
         # 2. 在线程池中运行同步任务 (非阻塞)

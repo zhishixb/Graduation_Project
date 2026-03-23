@@ -8,6 +8,9 @@ from typing import List, Tuple, Dict, Any, Optional
 
 
 class BrowserSessionManager :
+    """
+    自动处理滑块验证
+    """
     def __init__(self, user_agent: Optional[str] = None):
         """
         初始化反爬解决器 (强制有头模式)

@@ -2,10 +2,12 @@ from pathlib import Path
 from loguru import logger
 from typing import Dict, Any, Optional
 
-from backend.services.process.cleaning.major_clean import MajorCleaner
+
+from backend.services.process.cleaning.major_cleaner import MajorCleaner
+from backend.services.process.cleaning.training_data_cleaner import TrainingDataCleaner
 
 
-class CleanDataController:
+class CleanMajorController:
 
     def __init__(self):
         self.project_root = Path(__file__).resolve().parent.parent
@@ -116,3 +118,30 @@ class CleanDataController:
                 "data": None,
                 "message": f"系统内部错误：{str(e)}"
             }
+
+
+class CleanJobController:
+    def __init__(self):
+        self.project_root = Path(__file__).resolve().parent.parent
+        self.default_db_path = self.project_root / 'data' / 'db' / 'job_data.db'
+        self.default_csv_path = self.project_root / 'data' / 'csv' / 'major_data.csv'
+        self.default_output_csv_path = self.project_root / 'data' / 'csv' / 'training_data.csv'
+
+    def get_training_cleaning_stats(self, db_path: Optional[Path] = None, csv_path: Optional[Path] = None,output_csv_path: Optional[Path] = None):
+        target_db = db_path if db_path else self.default_db_path
+        target_csv = csv_path if output_csv_path else self.default_csv_path
+        output_csv_path = output_csv_path if output_csv_path else self.default_csv_path
+
+        training_cleaner = TrainingDataCleaner(target_db, output_csv_path, csv_path)
+
+        data = training_cleaner.get_training_cleaning_stats()
+
+        return {
+            "success": True,
+            "data": data,
+            "messages": ""
+        }
+
+    def creat_training_data(self):
+        pass
+

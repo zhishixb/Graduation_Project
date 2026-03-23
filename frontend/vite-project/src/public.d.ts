@@ -14,7 +14,6 @@ declare module 'vue' {
     CompareCard: typeof import('./components/graduation_project/process/left_card/CompareCard.vue')['default']
     ControlCard: typeof import('./components/graduation_project/process/left_card/ControlCard.vue')['default']
     ControllCard: typeof import('./components/graduation_project/process/left_card/ControllCard.vue')['default']
-    CountCard: typeof import('./components/graduation_project/spider/bottom_card/CountCard.vue')['default']
     JobSpiderByMajorCard: typeof import('./components/graduation_project/spider/top_card/JobSpiderByMajorCard.vue')['default']
     JobSpiderByPositionCard: typeof import('./components/graduation_project/spider/top_card/JobSpiderByPositionCard.vue')['default']
     MajorJobProcessCard: typeof import('./components/graduation_project/process/right_card/top_right_card/MajorJobProcessCard.vue')['default']
@@ -29,6 +28,7 @@ declare module 'vue' {
     NMenu: typeof import('naive-ui')['NMenu']
     NMessageProvider: typeof import('naive-ui')['NMessageProvider']
     NProgress: typeof import('naive-ui')['NProgress']
+    NResult: typeof import('naive-ui')['NResult']
     NSpin: typeof import('naive-ui')['NSpin']
     NTag: typeof import('naive-ui')['NTag']
     NTooltip: typeof import('naive-ui')['NTooltip']
@@ -37,6 +37,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SearchCard: typeof import('./components/graduation_project/spider/top_card/SearchCard.vue')['default']
     SideMenu: typeof import('./components/graduation_project/menu/SideMenu.vue')['default']
-    Temp: typeof import('./components/graduation_project/spider/temp.vue')['default']
+    Temp: typeof import('./components/graduation_project/process/right_card/top_right_card/temp.vue')['default']
+    TrainingCountCard: typeof import('./components/graduation_project/spider/bottom_card/TrainingCountCard.vue')['default']
   }
 }

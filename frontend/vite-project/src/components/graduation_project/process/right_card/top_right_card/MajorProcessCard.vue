@@ -174,7 +174,7 @@ onMounted(() => {
 <style scoped>
 .job-process-card-container {
   width: 165px;
-  height: 150px;
+  height: 140px;
   display: flex;
   flex-direction: column;
   padding: 12px;

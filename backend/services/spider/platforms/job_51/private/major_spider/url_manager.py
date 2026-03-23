@@ -2,6 +2,9 @@ from urllib.parse import quote
 import time
 
 class SpiderUrlManager:
+    """
+    控制爬取URL
+    """
     def __init__(self, job_name: str):
         self.job_name = job_name
         # 1. 只在初始化时编码一次关键词
@@ -43,7 +46,6 @@ class SpiderUrlManager:
 
     def get_url(self, page_num: int) -> str:
         """
-        通过拼接 prefix + page_num + suffix 生成最终 URL。
-        这样保证了 pageNum 出现在原本的位置，且没有重复参数。
+        生成最终 URL
         """
         return f"{self.url_prefix}{page_num}{self.url_suffix}"

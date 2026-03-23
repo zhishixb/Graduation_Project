@@ -2,7 +2,7 @@ import math
 from typing import List, Tuple
 
 # 定义基准值
-BASE_VALUE = 300
+BASE_VALUE = 200
 
 
 def get_geometric_probabilities(
@@ -12,6 +12,7 @@ def get_geometric_probabilities(
     """
     计算几何分布权重值（向上取整为整数）。
     越靠前的元素权重越高，按 ratio 指数递减。
+    用于计算爬取目标
 
     计算公式：value = ceil( (ratio^i / sum(ratio^k)) * BASE_VALUE )
 
@@ -19,7 +20,6 @@ def get_geometric_probabilities(
     :param ratio: 衰减比率 (0 < ratio <= 1)，默认 0.7
     :return: List[Tuple[str, int]]
              例如: [('财务', 130), ('银行', 91), ...]
-             注意：由于向上取整，所有值的总和通常会 > BASE_VALUE (300)
     """
     n = len(items)
     if n == 0:

@@ -26,7 +26,7 @@ import CompareCard from "@/components/graduation_project/process/left_card/Compa
 <style scoped>
 .process-container{
   width: 980px;
-  height: 520px;
+  height: 560px;
   display: flex;
   flex-direction: row;
   gap: 20px;
@@ -34,7 +34,7 @@ import CompareCard from "@/components/graduation_project/process/left_card/Compa
 
 .left-process-container{
   width: 620px;
-  height: 520px;
+  height: 560px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -54,7 +54,7 @@ import CompareCard from "@/components/graduation_project/process/left_card/Compa
 
 .top-right-process-container{
   width: 100%;
-  height: 150px;
+  height: 140px;
   display: flex;
   flex-direction: row;
   gap: 20px;
@@ -62,13 +62,13 @@ import CompareCard from "@/components/graduation_project/process/left_card/Compa
 
 .middle-right-process-container{
   width: 100%;
-  height: 165px;
+  height: 200px;
   gap: 20px;
 }
 
 .bottom-right-process-container{
   width: 100%;
-  height: 165px;
+  height: 200px;
 }
 
 </style>
