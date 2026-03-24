@@ -55,6 +55,7 @@
         placement="bottom-end"
         strategy="fixed"
         @update:value="handleMajorChange"
+        v-if="!isRunning"
       />
       <div v-if="isLoadingData" class="loading-tip">加载数据中...</div>
       <transition name="fade">
@@ -387,9 +388,7 @@ const startSpider = async () => {
         if(progressState.value.type == 1){
           // 计算百分比
           if (progressState.value.targetCount > 0) {
-            percent.value = Math.min(100, Math.round(
-              (progressState.value.currentCount / progressState.value.targetCount) * 100
-            ))
+            percent.value = Math.min(100, Math.round((progressState.value.currentCount / progressState.value.targetCount) * 100))
           } else {
             percent.value = 0
           }

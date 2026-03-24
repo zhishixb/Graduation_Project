@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
-from loguru import logger  # 假设你的类在这个路径
+import datetime
+from loguru import logger
 
 from backend.services.process.count.training_data_count import TrainingDataRecorder
 from backend.services.spider.platforms.job_51.private.major_spider.major_dictionary import MajorDictionary
@@ -87,10 +88,20 @@ class TrainingDataCountController:
         self.data_controller = TrainingDataRecorder(self.default_db_path, self.default_csv_path)
 
     def get_training_data_count(self) -> Dict[str, Any]:
-        temp = self.data_controller.update_training_data_count()
-        data = self.data_controller.get_last_n_records()
+        boss_csv_path = self.project_root / 'data' / 'other' / 'boss_data.csv'
+        boss_csv_manager = TrainingDataRecorder(self.default_db_path, boss_csv_path)
+
+        self.data_controller.update_training_data_count()
+        boss_csv_manager.update_training_data_count_by_handel(23009)
+
+        data_1 = self.data_controller.get_last_n_records()
+        data_2 = boss_csv_manager.get_last_n_records()
+
         return {
             "success": True,
-            "data": data,
-            "message": ""
+            "message": "获取训练数据统计成功",
+            "data": {
+                "51job": data_1,
+                "boss": data_2,
+            }
         }

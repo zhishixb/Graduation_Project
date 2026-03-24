@@ -122,3 +122,44 @@ class JobDatabaseManager(BaseDatabaseManager):
             return False
         finally:
             self._disconnect()
+
+    def get_random_job_by_function(self, function: str) -> Optional[Dict[str, Any]]:
+        """
+        根据指定的职能 (function) 随机返回一条职位数据。
+
+        :param function: 职能分类字符串 (例如: 'Java开发', '产品经理')
+        :return: 如果找到数据，返回包含字段信息的字典；如果没有找到或出错，返回 None
+        """
+        if not function:
+            print("错误：function 参数不能为空。")
+            return None
+
+        query_sql = f"""
+        SELECT job_id, job_name, industry_type, job_description, function, salary, major, provinceCode
+        FROM "{self.table_name}"
+        WHERE function = ?
+        ORDER BY RANDOM()
+        LIMIT 1;
+        """
+
+        self._connect()
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(query_sql, (function,))
+            row = cursor.fetchone()
+
+            if row:
+                # 将元组转换为字典，方便调用者使用
+                columns = [desc[0] for desc in cursor.description]
+                result_dict = dict(zip(columns, row))
+
+                return result_dict
+            else:
+                print(f"未找到职能为 '{function}' 的任何职位数据。")
+                return None
+
+        except sqlite3.Error as e:
+            print(f"随机查询职位时出错: {e}")
+            return None
+        finally:
+            self._disconnect()

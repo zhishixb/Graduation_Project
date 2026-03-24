@@ -57,6 +57,20 @@ class TrainingDataRecorder:
             logger.error(f"更新训练数据统计失败: {e}")
             raise
 
+    def update_training_data_count_by_handel(self, count: int):
+        """
+        从数据库获取最新统计，并更新到 CSV 日志中。
+        """
+        try:
+            # 2. 写入 CSV
+            self.csv_manager.record_today(count)
+
+            logger.info(f"已更新训练数据统计: Total={count}")
+            return count
+        except Exception as e:
+            logger.error(f"更新训练数据统计失败: {e}")
+            raise
+
     def get_last_n_records(self, n: int = 5) -> List[Tuple[datetime, int]]:
         """
         获取最近 N 条统计记录。

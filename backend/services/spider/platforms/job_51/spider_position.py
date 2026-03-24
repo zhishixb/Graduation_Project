@@ -14,10 +14,10 @@ _DEFAULT_FILE_PATH_BASE = _PROJECT_ROOT / 'data' / 'json' / '51job_job_data.json
 _DEFAULT_DB_PATH_BASE = _PROJECT_ROOT / 'data' / 'db' / 'jobs.db'
 
 class SpiderPosition:
-    def __init__(self, category: str, sub_category: str, position: str):
-        self.category = category
-        self.sub_category = sub_category
-        self.position = position
+    def __init__(self, subject: str, secondary_subject: str, major: str):
+        self.category = subject
+        self.sub_category = secondary_subject
+        self.position = major
         self.file_path = _DEFAULT_FILE_PATH_BASE
         self.db_path = _DEFAULT_DB_PATH_BASE
 
@@ -68,13 +68,14 @@ class SpiderPosition:
 
                 count = self.job_status.get_count()
 
-                while count < 200 and not self._stop_requested:
+                while count < 5 and not self._stop_requested:
                     if progress_callback:
                         signal_obj = SpiderRunSignal(
+                            type = 1,
                             current_job=self.position,
                             current_page=page_num,
                             current_count=count,
-                            target_count=200,
+                            target_count=150,
                         )
                         progress_callback(signal_obj.to_mes())
 
@@ -107,7 +108,7 @@ class SpiderPosition:
 
                     time.sleep(3)
 
-                    if count >= 200:
+                    if count >= 120:
                         self.job_status.set_state_completed()
 
         except KeyboardInterrupt:
@@ -115,6 +116,15 @@ class SpiderPosition:
         finally:
             self._is_running = False
             self.logger.info("爬虫任务结束。")
+            if progress_callback:
+                signal_obj = SpiderRunSignal(
+                    type=2,
+                    current_job=self.position,
+                    current_page=page_num,
+                    current_count=count,
+                    target_count=150,
+                )
+                progress_callback(signal_obj.to_dict())
 
 
     def to_stop(self):
