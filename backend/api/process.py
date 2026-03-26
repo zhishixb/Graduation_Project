@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from backend.controllers.clean_data_controller import CleanMajorController
 
-router = APIRouter(prefix="/api/process", tags=["数据处理"])
+router = APIRouter(prefix="/process", tags=["数据处理"])
 
 # 创建一个线程池，用于运行耗时的同步任务
 # max_workers 可根据 CPU 核心数调整，默认通常足够

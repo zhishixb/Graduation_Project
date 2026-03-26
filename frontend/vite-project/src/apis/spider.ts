@@ -1,13 +1,13 @@
 import request from '@/utils/request'
 
 export const getMajorsList = () => {
-  return request.get('/api/spider/allMajors')
+  return request.get('/spider/allMajors')
 }
 
 export const getJobList = () => {
-  return request.get('/api/spider/allJobs')
+  return request.get('/spider/allJobs')
 }
 
 export const getTrainingDataList = () => {
-  return request.get('/api/spider/getTrainingDataCount')
+  return request.get('/spider/getTrainingDataCount')
 }

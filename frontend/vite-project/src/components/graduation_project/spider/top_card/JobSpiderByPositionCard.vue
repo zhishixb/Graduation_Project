@@ -385,6 +385,8 @@ const startSpider = async () => {
         progressState.value.currentCount = data.current_count || 0
         progressState.value.targetCount = data.target_count || 0
 
+        console.log(progressState.value.targetCount)
+
         if(progressState.value.type == 1){
           // 计算百分比
           if (progressState.value.targetCount > 0) {

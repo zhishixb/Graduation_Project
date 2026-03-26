@@ -66,9 +66,11 @@ class SpiderPosition:
                 function = self.job_status.get_id()
                 self.url_manager = SpiderUrlManager(function)
 
+                print(self.url_manager.get_url(page_num))
+
                 count = self.job_status.get_count()
 
-                while count < 5 and not self._stop_requested:
+                while count < 150 and not self._stop_requested:
                     if progress_callback:
                         signal_obj = SpiderRunSignal(
                             type = 1,
@@ -77,7 +79,7 @@ class SpiderPosition:
                             current_count=count,
                             target_count=150,
                         )
-                        progress_callback(signal_obj.to_mes())
+                        progress_callback(signal_obj.to_dict())
 
                     target_url = self.url_manager.get_url(page_num)
                     result = session.solve_and_get_data(target_url, max_retries=3)

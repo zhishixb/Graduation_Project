@@ -2,7 +2,7 @@ import math
 from typing import List, Tuple
 
 # 定义基准值
-BASE_VALUE = 200
+BASE_VALUE = 250
 
 
 def get_geometric_probabilities(

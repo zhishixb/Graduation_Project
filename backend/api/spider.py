@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from backend.controllers.job_dict_controller import JobDictController, TrainingDataCountController
 
-router = APIRouter(prefix="/api/spider", tags=["爬虫功能"])
+router = APIRouter(prefix="/spider", tags=["爬虫功能"])
 
 
 @router.get("/allMajors")

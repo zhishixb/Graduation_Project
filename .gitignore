@@ -14,3 +14,4 @@
 /backend/data/db/jobs.db
 /backend/data/db/majors.db
 /backend/data/db/majors.db
+/backend/data/json/recommend_major.json

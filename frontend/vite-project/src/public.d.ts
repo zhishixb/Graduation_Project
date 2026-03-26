@@ -19,6 +19,7 @@ declare module 'vue' {
     MajorJobProcessCard: typeof import('./components/graduation_project/process/right_card/top_right_card/MajorJobProcessCard.vue')['default']
     MajorProcessCard: typeof import('./components/graduation_project/process/right_card/top_right_card/MajorProcessCard.vue')['default']
     MarqueeText: typeof import('./components/public/MarqueeText.vue')['default']
+    ModelCompareCard: typeof import('./components/graduation_project/process/left_card/compare/ModelCompareCard.vue')['default']
     NButton: typeof import('naive-ui')['NButton']
     NCascader: typeof import('naive-ui')['NCascader']
     NCheckbox: typeof import('naive-ui')['NCheckbox']
@@ -29,6 +30,8 @@ declare module 'vue' {
     NMessageProvider: typeof import('naive-ui')['NMessageProvider']
     NProgress: typeof import('naive-ui')['NProgress']
     NResult: typeof import('naive-ui')['NResult']
+    NScrollbar: typeof import('naive-ui')['NScrollbar']
+    NSelect: typeof import('naive-ui')['NSelect']
     NSpin: typeof import('naive-ui')['NSpin']
     NTag: typeof import('naive-ui')['NTag']
     NTooltip: typeof import('naive-ui')['NTooltip']
@@ -38,6 +41,8 @@ declare module 'vue' {
     SearchCard: typeof import('./components/graduation_project/spider/top_card/SearchCard.vue')['default']
     SideMenu: typeof import('./components/graduation_project/menu/SideMenu.vue')['default']
     Temp: typeof import('./components/graduation_project/process/right_card/top_right_card/temp.vue')['default']
+    Temp_1: typeof import('./components/graduation_project/process/temp_1.vue')['default']
+    Temp_3: typeof import('./components/graduation_project/process/temp_3.vue')['default']
     TrainingCountCard: typeof import('./components/graduation_project/spider/bottom_card/TrainingCountCard.vue')['default']
   }
 }

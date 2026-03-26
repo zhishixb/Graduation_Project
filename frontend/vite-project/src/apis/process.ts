@@ -1,9 +1,9 @@
 import request from '@/utils/request'
 
 export const cleanMajors = () => {
-  return request.get('/api/process/cleanMajor')
+  return request.get('/process/cleanMajor')
 }
 
 export const checkMajorStatus = () => {
-  return request.get('/api/process/checkMajorStatus')
+  return request.get('/process/checkMajorStatus')
 }

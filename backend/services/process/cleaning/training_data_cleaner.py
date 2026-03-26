@@ -1,11 +1,11 @@
 import csv
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 from loguru import logger
 
 # 确保导入路径与你的项目结构一致
 from backend.services.process.cleaning.job.public.job_description_parser import JobDescriptionParser
-from backend.services.process.cleaning.job.training_data.csv_manager import MajorCourseFinder
+from backend.services.process.cleaning.job.public.csv_manager import MajorCourseFinder
 from backend.services.process.cleaning.job.training_data.job_data_reader import JobDataReader
 
 class TrainingDataCleaner:
@@ -26,7 +26,7 @@ class TrainingDataCleaner:
 
         # 初始化专业课程查找器
         try:
-            self.course_finder = MajorCourseFinder(str(self.major_csv_path))
+            self.course_finder = MajorCourseFinder(major_csv_path)
             logger.info(f"成功加载专业课程数据：{self.major_csv_path}")
         except FileNotFoundError as e:
             logger.error(f"专业数据文件未找到，将跳过课程增强步骤：{e}")
