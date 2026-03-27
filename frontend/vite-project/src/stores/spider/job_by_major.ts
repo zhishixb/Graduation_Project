@@ -31,6 +31,7 @@ export const useSpiderStore = defineStore('spider', () => {
   const isAutoRunning = ref(false);
   const currentMajor = ref<string | null>(null);
   const autoQueue = ref<string[]>([]);
+  const stopRequested = ref(false);
 
   // 进度与日志
   const progress = ref<ProgressState>({
@@ -162,6 +163,8 @@ export const useSpiderStore = defineStore('spider', () => {
       return;
     }
 
+    stopRequested.value = false;
+
     if (autoMode) {
       const queue = prepareAutoQueue();
       if (queue.length === 0) {
@@ -205,7 +208,7 @@ export const useSpiderStore = defineStore('spider', () => {
     const path = getMajorPath(majorName);
     if (!path) {
       addLog(`[错误] 找不到路径: ${majorName}`);
-      if (isAutoRunning.value) {
+      if (isAutoRunning.value && !stopRequested.value) {
         setTimeout(processNextInQueue, 1000);
       } else {
         stopTask();
@@ -278,9 +281,7 @@ export const useSpiderStore = defineStore('spider', () => {
               // ✅ 任务完成
               addLog(`[完成] ${majorName}`);
               updateStatus('任务已完成', '#52c41a'); // 立即更新 UI 提示
-              finishTask()
-
-              if (isAutoRunning.value) {
+              if (isAutoRunning.value && !stopRequested.value) {
                 setTimeout(processNextInQueue, AUTO_TASK_DELAY);
               } else {
                 finishTask();
@@ -335,6 +336,7 @@ export const useSpiderStore = defineStore('spider', () => {
 
   function stopTask() {
     console.log('🛑 执行停止任务');
+    stopRequested.value = true;
     if (ws) {
       try {
         if (ws.readyState === WebSocket.OPEN) {
@@ -353,6 +355,7 @@ export const useSpiderStore = defineStore('spider', () => {
     isRunning.value = false;
     isAutoRunning.value = false;
     currentMajor.value = null;
+    stopRequested.value = false;
 
     progress.value = { type: 0, currentJob: '--', currentPage: 0, currentCount: 0, targetCount: 0 };
 
