@@ -430,7 +430,5 @@ export const useSpiderStore = defineStore('spider', () => {
     startTask,
     stopTask,
     cleanup,
-    finishTask,
-    finishAuto
   };
 });

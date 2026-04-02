@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from backend.services.process.cleaning.job.public.csv_manager import MajorCourseFinder
-from backend.services.process.cleaning.job.public.job_description_parser import JobDescriptionParser
+from backend.services.process.cleaning.job.public._disable_job_description_parser import JobDescriptionParser
 from backend.services.spider.platforms.job_51.private.position_spider.dao import JobDatabaseManager
 
 

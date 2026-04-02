@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from backend.api import spider, models_instruct
+from backend.api import spider
 from backend.api import process
 from backend.routers import spider_ws
 from backend.websocket_manager import manager
@@ -65,7 +65,7 @@ app.add_middleware(
 
 app.include_router(spider.router)
 app.include_router(process.router)
-app.include_router(models_instruct.router)  # 这里会读取 backend/api/models_instruct.py 中的 router
+# app.include_router(models_instruct.router)
 app.include_router(spider_ws.router)
 
 if __name__ == "__main__":

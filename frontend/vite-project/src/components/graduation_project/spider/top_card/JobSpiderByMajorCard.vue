@@ -97,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useSpiderStore } from '@/stores/spider/job_by_major';
 import MarqueeText from "@/components/public/MarqueeText.vue";
 import { AlertCircleOutline } from "@vicons/ionicons5";

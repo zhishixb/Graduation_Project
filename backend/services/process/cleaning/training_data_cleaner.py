@@ -4,7 +4,7 @@ from typing import List, Tuple
 from loguru import logger
 
 # 确保导入路径与你的项目结构一致
-from backend.services.process.cleaning.job.public.job_description_parser import JobDescriptionParser
+from backend.services.process.cleaning.job.public._disable_job_description_parser import JobDescriptionParser
 from backend.services.process.cleaning.job.public.csv_manager import MajorCourseFinder
 from backend.services.process.cleaning.job.training_data.job_data_reader import JobDataReader
 
