@@ -1,6 +1,7 @@
 import time
 from pathlib import Path
 from loguru import logger
+from sklearn.utils.multiclass import type_of_target
 
 from backend.services.spider.platforms.job_51.private.major_spider.dao import JobDatabaseManager
 from backend.services.spider.platforms.job_51.private.major_spider.get_target_tools import get_geometric_probabilities
@@ -130,8 +131,12 @@ class SpiderMajor:
                                     # ✅ 修复：使用 self.logger
                                     self.logger.error(f"❌ 数据库插入失败: {parse_message}")
                             else:
-                                # ✅ 修复：使用 self.logger
-                                self.logger.error(f"❌ 解析失败: {parse_message}")
+                                if parse_success and not parsed_list:
+                                    page_num = 1
+                                    # 切换时间戳查询，应该有效
+                                    self.url_manager = SpiderUrlManager(job)
+                                else:
+                                    self.logger.error(f"❌ 解析失败: {parse_message}")
                         else:
                             # ✅ 修复：使用 self.logger
                             self.logger.warning("获取失败，请检查日志或网络环境。")

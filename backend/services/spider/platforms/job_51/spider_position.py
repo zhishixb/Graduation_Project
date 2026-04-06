@@ -95,14 +95,17 @@ class SpiderPosition:
                                 self.logger.success(f"第 {page_num} 页爬取成功")
                                 page_num += 1
                                 count += length
-                                self.job_status.update_count(length)
+                                self.job_status.update_count(count)
 
                             else:
                                 # ✅ 修复：使用 self.logger
                                 self.logger.error(f"❌ 数据库插入失败: {parse_message}")
                         else:
-                            # ✅ 修复：使用 self.logger
-                            self.logger.error(f"❌ 解析失败: {parse_message}")
+                            if parse_success and not parsed_list:
+                                page_num = 1
+                                self.url_manager = SpiderUrlManager(job)
+                            else:
+                                self.logger.error(f"❌ 解析失败: {parse_message}")
                     else:
                         # ✅ 修复：使用 self.logger
                         self.logger.warning("本岗位数据已全部爬取。")
