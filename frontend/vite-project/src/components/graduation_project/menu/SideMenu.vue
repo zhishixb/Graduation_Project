@@ -32,6 +32,7 @@ const routeMap: Record<string, string> = {
   home: '/graduation_project',
   spider: '/graduation_project/spider',
   process: '/graduation_project/process',
+  achieve: '/graduation_project/achieve'
 }
 
 // 菜单配置（注意：不传 label 或设为 ''，避免占位）

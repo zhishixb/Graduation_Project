@@ -59,8 +59,9 @@ class JobDataParser:
         total_count = job_obj.get("totalCount") or job_obj.get("totalcount") or 0
 
         # 逻辑：如果服务器说总共有数据 (>0)，但 items 却是空的，说明数据获取异常
-        if total_count > 0 and len(items_list) == 0:
-            return False, None, f"数据异常：服务器返回总数 {total_count}，但职位列表为空 (items=[])。可能触发了反爬或分页错误。"
+        # if total_count > 0 and len(items_list) == 0:
+        #     return False, None, f"数据异常：服务器返回总数 {total_count}，但职位列表为空 (items=[])。可能触发了反爬或分页错误。"
+        # 这一段修改为更新时间戳，实现url刷新以获得更多信息
 
         # 4. 正常解析流程
         extracted_data = []

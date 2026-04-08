@@ -35,7 +35,7 @@
       <!-- 手动模式：级联选择器 -->
       <n-cascader
         v-if="!store.isRunning && !store.isAutoRunning"
-        v-model:value="store.selectedPosition"
+        v-model:value="store.selectedPositionUid"
         :options="store.cascaderOptions"
         placeholder="选职位"
         size="small"

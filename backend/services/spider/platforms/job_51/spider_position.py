@@ -52,6 +52,9 @@ class SpiderPosition:
             # 1. 检查是否已完成
             if not self.job_status.is_pending():
                 self.logger.info(f"[{self.position}] 所有任务已完成，爬虫退出。")
+                page_num = 1
+                count = 150
+                print(1111)
                 return
 
             # 3. 开始爬取循环
@@ -103,7 +106,7 @@ class SpiderPosition:
                         else:
                             if parse_success and not parsed_list:
                                 page_num = 1
-                                self.url_manager = SpiderUrlManager(job)
+                                self.url_manager = SpiderUrlManager(function)
                             else:
                                 self.logger.error(f"❌ 解析失败: {parse_message}")
                     else:

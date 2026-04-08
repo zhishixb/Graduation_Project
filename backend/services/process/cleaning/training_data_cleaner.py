@@ -4,8 +4,8 @@ from typing import List, Tuple
 from loguru import logger
 
 # 确保导入路径与你的项目结构一致
-from backend.services.process.cleaning.job.public._disable_job_description_parser import JobDescriptionParser
 from backend.services.process.cleaning.job.public.csv_manager import MajorCourseFinder
+from backend.services.process.cleaning.job.public.job_description_parser import SimpleExtractor, LineCleaner
 from backend.services.process.cleaning.job.training_data.job_data_reader import JobDataReader
 
 class TrainingDataCleaner:
@@ -22,7 +22,8 @@ class TrainingDataCleaner:
 
         # 初始化组件
         self.db_manager = JobDataReader(self.db_path)
-        self.data_cleaner = JobDescriptionParser()
+        self.extractor = SimpleExtractor()
+        self.cleaner = LineCleaner()
 
         # 初始化专业课程查找器
         try:
@@ -89,7 +90,8 @@ class TrainingDataCleaner:
                         major_courses_text = courses if courses else ""
 
                     # 2. 清洗职位描述
-                    cleaned_text = self.data_cleaner.get_requirements_text(description, clean=True)
+                    raw_sections = self.extractor.extract(description)
+                    cleaned_text = self.cleaner.process_sections(raw_sections)
 
                     # 3. 收集结果 (仅两列)
                     results_to_write.append((major_courses_text, cleaned_text))

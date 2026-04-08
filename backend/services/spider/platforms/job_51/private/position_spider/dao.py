@@ -22,7 +22,7 @@ class JobDatabaseManager(BaseDatabaseManager):
         """
         super().__init__(str(db_path))
 
-        self.table_name = "job_list"
+        self.table_name = "position_jobs"
         self.default_function = default_function
 
         self._create_table_if_not_exists()

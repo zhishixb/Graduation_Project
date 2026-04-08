@@ -17,21 +17,74 @@ class SimpleExtractor:
         '公司优势', '公司介绍', '我们是谁'
     ]
 
-    def extract(self, text: str) -> List[List[str]]:  # 修改返回类型：列表的列表
+    CONTENT_KEYWORDS = {
+        # 编程语言（含缩写）
+        'java', 'python', 'c++', 'c#', 'go', 'rust', 'r', 'ruby', 'php', 'swift',
+        'kotlin', 'scala', 'perl', 'lua', 'dart', 'julia', 'ts', 'js', 'html', 'css',
+
+        # 数据库与缓存
+        'sql', 'nosql', 'mysql', 'redis', 'mongo', 'oracle', 'db2', 'hbase', 'cas',
+        'es', 'solr', 'neo4j', 'cass',  # cass 为 Cassandra 常见缩写
+
+        # 框架与库（缩写/短名）
+        'react', 'vue', 'node', 'next', 'nuxt', 'flask', 'django', 'spring', 'keras',
+        'pandas', 'numpy', 'scrapy', 'k8s', 'babel', 'vite', 'cmake', 'gdb', 'llvm',
+
+        # 开发工具与版本控制
+        'git', 'svn', 'docker', 'maven', 'gradle', 'npm', 'yarn', 'eslint', 'webpack',
+
+        # 云平台与基础设施
+        'aws', 'gcp', 'azure', 'k8s', 'oci', '阿里云', '腾讯云', '华为云',
+
+        # 操作系统与命令行
+        'linux', 'unix', 'macos', 'bsd', 'cli', 'shell', 'bash', 'zsh',
+
+        # 网络与协议
+        'tcp', 'udp', 'http', 'https', 'ftp', 'ssh', 'ssl', 'tls', 'dns', 'dhcp',
+        'ip', 'arp', 'mqtt',
+
+        # 数据科学、AI与算法
+        'ai', 'ml', 'nlp', 'cv', 'ocr', 'asr', 'rl', 'gan', 'etl', 'bi', 'olap',
+        'spark', 'hadoop', 'flink', 'storm', 'kafka', 'hive', 'pig',
+
+        # 认证与标准
+        'pmp', 'cfa', 'cpa', 'acca', 'cisa', 'cissp', 'ceh', 'cism', 'itil', 'togaf',
+        'scrum', 'agile',
+
+        # 设计与多媒体
+        'ps', 'ai', 'ae', 'pr', 'cad', '3d', 'ui', 'ux', 'sketch', 'figma', 'maya',
+        'unity', 'unreal',
+
+        # 企业管理与业务系统
+        'erp', 'crm', 'scm', 'hrm', 'bi', 'sap', '金蝶', '用友', '钉钉', '飞书',
+        '企业微信',
+
+        # 常用技术缩写
+        'api', 'sdk', 'ide', 'cli', 'gui', 'jit', 'aop', 'oop', 'ioc', 'di', 'orm',
+        'rest', 'soap', 'xml', 'json', 'yaml', 'csv', 'pdf', 'rtf',
+
+        # 硬件/嵌入式/物联网
+        'fpga', 'arm', 'dsp', 'rtos', 'iot', 'mcu',
+
+        # 安全
+        'waf', 'ids', 'ips', 'soc', 'siem',
+    }
+
+    @staticmethod
+    def _remove_periods(s: str) -> str:
+        """移除中英文句号"""
+        return s.replace('。', '').replace('.', '')
+
+    def extract(self, text: str) -> List[List[str]]:
         lines = text.splitlines()
         sections = []
-
         current_type = None
         current_content = []
 
         for line in lines:
             line_stripped = line.strip()
 
-            # --- 废弃词过滤 ---
-            if current_type and any(kw in line_stripped for kw in self.ABANDON_KEYWORDS):
-                continue
-
-            # 1. 检查是否是目标标题行
+            # 1. 检查目标标题（不变）
             found_type = None
             for kw in self.DUTY_KEYWORDS:
                 if kw in line_stripped:
@@ -43,37 +96,39 @@ class SimpleExtractor:
                         found_type = 'req'
                         break
 
-            # 2. 逻辑处理
             if found_type:
-                # --- 发现新目标标题 ---
                 if current_type and current_content:
-                    sections.append(current_content)  # 直接存列表，不合并
-
-                # 开启新段落
+                    sections.append(current_content)
                 current_type = found_type
                 current_content = []
-
             elif current_type:
-                # --- 正在提取内容中 ---
-                if not line_stripped:
+                if not line_stripped:  # 空行截断
                     if current_content:
                         sections.append(current_content)
                         current_type = None
                         current_content = []
-                elif len(line_stripped) < 7 and not line_stripped.startswith('-') and not line_stripped.startswith(
-                        '[') and not line_stripped.startswith('【'):
-                    if current_content:
-                        sections.append(current_content)
-                        current_type = None
-                        current_content = []
-                else:
-                    # 正常内容，加入列表
-                    current_content.append(line_stripped)
+                elif len(line_stripped) < 7:
+                    if any(kw in line_stripped for kw in self.ABANDON_KEYWORDS):
+                        if current_content:
+                            sections.append(current_content)
+                            current_type = None
+                            current_content = []
+                    elif any(kw in line_stripped for kw in self.CONTENT_KEYWORDS):
+                        cleaned = self._remove_periods(line_stripped)
+                        if cleaned:
+                            current_content.append(cleaned)
+                    else:
+                        if current_content:
+                            sections.append(current_content)
+                            current_type = None
+                            current_content = []
+                else:  # 长行
+                    cleaned = self._remove_periods(line_stripped)
+                    if cleaned:
+                        current_content.append(cleaned)
 
-        # 3. 处理最后一段
         if current_type and current_content:
             sections.append(current_content)
-
         return sections
 
 
@@ -178,3 +233,27 @@ class LineCleaner:
 
     def clean_lines(self, lines: List[str]) -> List[str]:
         return [self.clean_line(line) for line in lines]
+
+    def process_sections(self, sections: List[List[str]]) -> str:
+        """
+        对每个文本块（section）执行清洗，然后将块内的行用中文分号拼接，
+        再将所有非空块用两个换行符拼接成一个完整的字符串。
+
+        Args:
+            sections: 由 SimpleExtractor.extract() 返回的结构，例如 [[line1, line2, ...], [line3, ...]]
+
+        Returns:
+            str: 清洗并拼接后的完整文本，各板块之间用两个换行符分隔。
+        """
+        result_parts = []
+        for section in sections:
+            # 1. 清洗当前块中的每一行
+            cleaned_lines = self.clean_lines(section)  # List[str]
+            # 2. 过滤掉空字符串（即清洗后为空的行）
+            non_empty_lines = [line for line in cleaned_lines if line.strip()]
+            # 3. 若存在有效内容，则用中文分号拼接
+            if non_empty_lines:
+                block_str = "；".join(non_empty_lines)
+                result_parts.append(block_str)
+        # 4. 将所有板块用两个换行符拼接成一个字符串
+        return "\n\n".join(result_parts)
