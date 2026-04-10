@@ -144,39 +144,42 @@ class LineCleaner:
         '工作地点', '办公地点', '地址', '市', '县', '区',
 
         # 联系方式
-        '联系方式', '邮箱', '电话', '微信', 'QQ', '简历', '投递',
+        '联系方式', '邮箱', '电话', '微信', 'QQ', '简历', '投递', '面试',
 
         # 模糊/兜底条款
         '其他', '临时', '交办', '上级', '领导', '安排', '任务', '事宜',
 
         # 要求
         '岁', '气质', '能力优秀', '违法', '驾照', '年以上工作经验', '年工作经验',
+        '有经验者优先', '优秀者',
 
         # 状态表示
         '热爱', '反馈', '出差', '顺利开展', '发展趋势', '提供', '总结', '顺利进行',
         '盈利', '提升', '淘汰', '结果', '长期', '浓厚兴趣', '成功', '文化氛围',
-        '工作环境',
+        '工作环境', '按时完成', '预期效果', '确保',
 
         # 宽泛的工作内容
         '实操指导', '利润', '全面评估', '项目进度', '保障', '资源调配', '风险',
-        '推动',
+        '推动', '新工具',
 
         # 软技能
-        '抗压能力', '学习能力', '沟通', '职业发展', '团队', '团体',
+        '抗压', '学习能力', '沟通', '职业发展', '团队', '团体',
         '吃苦耐劳', '勤奋', '踏实', '认真', '细致', '细心', '积极', '主动',
         '服从', '形象', '气质', '口齿', '表达', '思维敏捷', '应变',
         '职业道德', '敬业精神', '责任心', '事业心', '激情', '自信', '执行力',
+        '思维活跃', '创意', '时事', '亲和力', '职业素养', '有想法', '审美能力',
+        '审美情趣', '服务意识',
 
         # 学历
-        '本科', '毕业生', '不限', '应届生',
+        '本科', '毕业生', '不限', '应届生', '大专',
     ]
 
     def __init__(self):
-        # 序号匹配正则
-        self.pattern = re.compile(
+        # 导引符号匹配正则（新增）
+        self.leader_pattern = re.compile(
             r'^\s*' +
             r'(?:' +
-            r'[-•●▪▸➢➔➣➤➥➦➧➨➩➪➫➬➭➮➯➱➲➳➴➵➶➷➸➹➺➻➼➽➾]' +
+            r'[\*\-•●▪▸➢➔➣➤➥➦➧➨➩➪➫➬➭➮➯➱➲➳➴➵➶➷➸➹➺➻➼➽➾]' +  # 新增 * 和 -
             r'|' +
             r'[0-9]+[\.、\)]' +
             r'|' +
@@ -205,6 +208,7 @@ class LineCleaner:
     def clean_line(self, line: str) -> str:
         # --- 第一步：去除行首序号 ---
         line = self.pattern.sub('', line)
+        line = re.sub(r'^\s*\d+(?:[\.、\)）]\s*|\s+)', '', line)
 
         # --- 第二步：按逗号分割并过滤 ---
         parts = re.split(r'[，,]', line)
@@ -236,24 +240,17 @@ class LineCleaner:
 
     def process_sections(self, sections: List[List[str]]) -> str:
         """
-        对每个文本块（section）执行清洗，然后将块内的行用中文分号拼接，
-        再将所有非空块用两个换行符拼接成一个完整的字符串。
+        对每个文本块（section）执行清洗，然后将所有有效行（跨板块）用中文分号拼接成一个字符串。
 
         Args:
             sections: 由 SimpleExtractor.extract() 返回的结构，例如 [[line1, line2, ...], [line3, ...]]
 
         Returns:
-            str: 清洗并拼接后的完整文本，各板块之间用两个换行符分隔。
+            str: 清洗并拼接后的完整文本，所有内容用中文分号连接，无换行符。
         """
-        result_parts = []
+        all_lines = []
         for section in sections:
-            # 1. 清洗当前块中的每一行
-            cleaned_lines = self.clean_lines(section)  # List[str]
-            # 2. 过滤掉空字符串（即清洗后为空的行）
+            cleaned_lines = self.clean_lines(section)
             non_empty_lines = [line for line in cleaned_lines if line.strip()]
-            # 3. 若存在有效内容，则用中文分号拼接
-            if non_empty_lines:
-                block_str = "；".join(non_empty_lines)
-                result_parts.append(block_str)
-        # 4. 将所有板块用两个换行符拼接成一个字符串
-        return "\n\n".join(result_parts)
+            all_lines.extend(non_empty_lines)
+        return "；".join(all_lines)

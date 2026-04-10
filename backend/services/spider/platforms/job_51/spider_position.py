@@ -5,6 +5,7 @@ from loguru import logger
 from backend.services.spider.platforms.job_51.private.position_spider.dao import JobDatabaseManager
 from backend.services.spider.platforms.job_51.private.position_spider.job_data_parser import JobDataParser
 from backend.services.spider.platforms.job_51.private.position_spider.job_status_manager import JobStatusManager
+from backend.services.spider.platforms.job_51.private.position_spider.status_file_manager import FlagFile
 from backend.services.spider.platforms.job_51.private.position_spider.url_manager import SpiderUrlManager
 from backend.services.spider.platforms.job_51.public.browser_manager import BrowserSessionManager
 from backend.services.spider.platforms.job_51.public.spider_run_signal import SpiderRunSignal
@@ -34,6 +35,14 @@ class SpiderPosition:
 
         self.logger = logger.bind(spider_name=self.category, major=self.position)
 
+        self.target = 110
+
+        self.empty_page = 0
+
+        self.end_spider = False
+
+        self.status_file_manager = FlagFile(Path(__file__).resolve().parent / 'private' / 'position_spider' / '_status.txt')
+
     def run(self, progress_callback=None):
         """
         启动爬虫主流程。这个方法是线程安全的入口点。
@@ -53,8 +62,7 @@ class SpiderPosition:
             if not self.job_status.is_pending():
                 self.logger.info(f"[{self.position}] 所有任务已完成，爬虫退出。")
                 page_num = 1
-                count = 150
-                print(1111)
+                count = 110
                 return
 
             # 3. 开始爬取循环
@@ -73,14 +81,22 @@ class SpiderPosition:
 
                 count = self.job_status.get_count()
 
-                while count < 150 and not self._stop_requested:
+                has_done = self.job_database_manager.get_count_by_default_function()
+                continue_spider = self.status_file_manager.read()
+
+                if has_done > 0 and continue_spider == 0:
+                    self.logger.info(f"数据库中已有 {has_done} 条数据，跳过爬取。")
+                    self.job_status.set_state_completed()
+                    return
+
+                while count < self.target and not self._stop_requested:
                     if progress_callback:
                         signal_obj = SpiderRunSignal(
                             type = 1,
                             current_job=self.position,
                             current_page=page_num,
                             current_count=count,
-                            target_count=150,
+                            target_count=self.target,
                         )
                         progress_callback(signal_obj.to_dict())
 
@@ -92,32 +108,44 @@ class SpiderPosition:
                         parse_success, parsed_list, parse_message = self.job_data_parser.parse_listings(data)
 
                         if parse_success and parsed_list:
-                            length = len(parsed_list)
-                            if self.job_database_manager.insert_parsed_data(parsed_list):
-                                # ✅ 修复：使用 self.logger
+                            success, inserted = self.job_database_manager.insert_parsed_data(parsed_list)
+                            if success:
                                 self.logger.success(f"第 {page_num} 页爬取成功")
                                 page_num += 1
-                                count += length
+                                count += inserted
                                 self.job_status.update_count(count)
 
                             else:
-                                # ✅ 修复：使用 self.logger
                                 self.logger.error(f"❌ 数据库插入失败: {parse_message}")
                         else:
                             if parse_success and not parsed_list:
-                                page_num = 1
-                                self.url_manager = SpiderUrlManager(function)
+                                self.empty_page += 1
+                                if self.empty_page == 1:
+                                    self.url_manager.set_degree_combined(True)
+                                    self.url_manager.refresh_timestamp()
+                                    page_num = 1
+                                elif self.empty_page == 2:
+                                    self.end_spider = True
                             else:
                                 self.logger.error(f"❌ 解析失败: {parse_message}")
                     else:
-                        # ✅ 修复：使用 self.logger
                         self.logger.warning("本岗位数据已全部爬取。")
-                        self.job_status.set_state_completed()
 
-                    time.sleep(3)
+                    if self.empty_page > 0:
+                        time.sleep(5)
+                    else:
+                        time.sleep(3)
 
-                    if count >= 120:
+                    if count >= self.target:
                         self.job_status.set_state_completed()
+                        self.status_file_manager.write(0)
+                    else:
+                        self.status_file_manager.write(1)
+
+                    if self.end_spider:
+                        self.job_status.set_state_completed()
+                        self.status_file_manager.write(0)
+                        break
 
         except KeyboardInterrupt:
             self.logger.info("收到中断信号，正在停止...")
@@ -130,7 +158,7 @@ class SpiderPosition:
                     current_job=self.position,
                     current_page=page_num,
                     current_count=count,
-                    target_count=150,
+                    target_count=self.target,
                 )
                 progress_callback(signal_obj.to_dict())
 

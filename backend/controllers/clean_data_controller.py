@@ -125,7 +125,7 @@ class CleanJobController:
         self.project_root = Path(__file__).resolve().parent.parent
         self.default_db_path = self.project_root / 'data' / 'db' / 'job_data.db'
         self.default_csv_path = self.project_root / 'data' / 'csv' / 'major_data.csv'
-        self.default_output_csv_path = self.project_root / 'data' / 'csv' / 'training_data.csv'
+        self.default_output_csv_path = self.project_root / 'data' / 'csv' / 'public.csv'
 
     def get_training_cleaning_stats(self, db_path: Optional[Path] = None, csv_path: Optional[Path] = None,output_csv_path: Optional[Path] = None):
         target_db = db_path if db_path else self.default_db_path

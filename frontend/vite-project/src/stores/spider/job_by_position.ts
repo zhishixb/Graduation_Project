@@ -307,6 +307,9 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
               const remainText = isAutoRunning.value ? `[剩${autoQueue.value.length}] ` : ''
               updateContent(`${remainText}${progressState.value.currentJob} (${progressState.value.currentCount}/${progressState.value.targetCount})`, '#6cb1ff')
             } else if (progressState.value.type === 2) {
+              if (progressState.value.targetCount > 0) {
+                percent.value = Math.min(100, Math.round((progressState.value.currentCount / progressState.value.targetCount) * 100))
+              }
               addLog(`[完成] ${positionName}`)
               if (!finished) {
                 finished = true
@@ -360,7 +363,7 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
 
     const nextItem = autoQueue.value.shift()!
     currentPosition.value = nextItem.position
-    updateContent(`🤖 自动模式: ${nextItem.position} (剩余${autoQueue.value.length})`, '#722ed1')
+    updateContent(`自动模式: ${nextItem.position} (剩余${autoQueue.value.length})`, '#722ed1')
     addLog(`[自动] 开始爬取: ${nextItem.position}`)
 
     try {
@@ -466,7 +469,7 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
       autoQueue.value = queue
       isAutoRunning.value = true
       isRunning.value = true
-      updateContent(`🤖 自动模式：共 ${queue.length} 个职位`, '#722ed1')
+      updateContent(`自动模式：共 ${queue.length} 个职位`, '#722ed1')
       addLog(`自动队列生成完毕，将依次爬取 ${queue.length} 个职位`)
       processNextInQueue(onMessage, onError)
     } else {

@@ -57,49 +57,62 @@ const fetchData = async () => {
     Object.values(rawData).forEach((seriesData: any[]) => {
       seriesData.forEach((item: any[]) => {
         if (item[0]) {
-          const dateStr = item[0].split('T')[0].substring(5);
+          const dateStr = item[0].split('T')[0];
           allDatesSet.add(dateStr);
         }
       });
     });
 
-    const categories = Array.from(allDatesSet).sort((a, b) => {
-      return new Date(`2026-${a}`).getTime() - new Date(`2026-${b}`).getTime();
-    });
+    const categories = Array.from(allDatesSet).sort();
 
-    // 2. 数据对齐与填充 (用前一天数据补全)
+    // 2. 准备数据
     const seriesDataMap: Record<string, number[]> = {};
 
-    // 定义明确的渲染顺序：先 BOSS (底层)，后 51job (顶层)
-    // ECharts 堆叠顺序 = 数组索引顺序 (索引 0 在最底)
-    const renderOrder = ['boss', '51job'];
+    // 定义所有可能的平台
+    const allPlatforms = ['boss', '51position', '51job'];
 
-    renderOrder.forEach(platform => {
-      if (!rawData[platform]) return;
+    // 平台显示配置
+    const platformConfig: Record<string, { name: string; start: string; end: string }> = {
+      '51position': {
+        name: '51Position',
+        start: '#f093fb',
+        end: '#f5576c'
+      },
+      'boss': {
+        name: 'BOSS直聘',
+        start: '#4facfe',
+        end: '#00f2fe'
+      },
+      '51job': {
+        name: '51Job',
+        start: '#43e97b',
+        end: '#38f9d7'
+      }
+    };
 
+    // 只处理存在的平台
+    const existingPlatforms = allPlatforms.filter(platform => rawData[platform]);
+
+    existingPlatforms.forEach(platform => {
       const platformData = rawData[platform];
       const dataMap = new Map<string, number>();
 
       platformData.forEach((item: any[]) => {
-        const dateStr = item[0].split('T')[0].substring(5);
+        const dateStr = item[0].split('T')[0];
         dataMap.set(dateStr, item[1] || 0);
       });
 
-      const filledData: number[] = [];
-      let lastValidValue = 0;
-
+      // 对齐数据到所有日期
+      const alignedData: number[] = [];
       categories.forEach(date => {
-        if (dataMap.has(date)) {
-          lastValidValue = dataMap.get(date)!;
-        }
-        filledData.push(lastValidValue);
+        alignedData.push(dataMap.get(date) || 0);
       });
 
-      seriesDataMap[platform] = filledData;
+      seriesDataMap[platform] = alignedData;
     });
 
     await nextTick();
-    renderChart(categories, seriesDataMap, renderOrder);
+    renderChart(categories, seriesDataMap, existingPlatforms, platformConfig);
 
   } catch (err: any) {
     console.error("Failed to fetch training data:", err);
@@ -109,8 +122,13 @@ const fetchData = async () => {
   }
 };
 
-// --- ECharts 渲染逻辑 (优化配色 + 调整顺序) ---
-const renderChart = (categories: string[], seriesMap: Record<string, number[]>, order: string[]) => {
+// --- ECharts 渲染逻辑 ---
+const renderChart = (
+  categories: string[],
+  seriesMap: Record<string, number[]>,
+  platforms: string[],
+  platformConfig: Record<string, { name: string; start: string; end: string }>
+) => {
   if (!chartContainer.value) return;
 
   if (chartInstance) {
@@ -124,60 +142,46 @@ const renderChart = (categories: string[], seriesMap: Record<string, number[]>, 
     devicePixelRatio: window.devicePixelRatio || 1
   });
 
-  // 🎨 全新配色方案
-  // 底层 (BOSS): 深紫 -> 蔚蓝 (稳重、科技感)
-  const bossGradient = {
-    start: '#27459c',
-    end: '#bc67c5'
-  };
-  // 顶层 (51Job): 青绿 -> 亮蓝 (活力、增长)
-  const job51Gradient = {
-    start: '#00f260',
-    end: '#0575e6'
-  };
-
-  const seriesList = order.map((platform) => {
-    let nameDisplay = '';
-    let gradientConfig = { start: '#ccc', end: '#eee' };
-
-    if (platform === 'boss') {
-      nameDisplay = 'BOSS直聘';
-      gradientConfig = bossGradient;
-    } else if (platform === '51job') {
-      nameDisplay = '51Job';
-      gradientConfig = job51Gradient;
-    }
+  // 构建 series 列表（按照 platforms 的顺序，索引越小越在底层）
+  const seriesList = platforms.map((platform) => {
+    const config = platformConfig[platform];
 
     return {
-      name: nameDisplay,
+      name: config.name,
       type: 'line',
-      stack: 'Total', // 保持堆叠
+      stack: 'Total',
       smooth: true,
       lineStyle: {
-        width: 0 // 隐藏线条，纯面积展示
+        width: 0
       },
       showSymbol: false,
       areaStyle: {
-        opacity: 0.9, // 稍微提高不透明度，让颜色更实
+        opacity: 0.85,
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: gradientConfig.start },
-          { offset: 1, color: gradientConfig.end }
+          { offset: 0, color: config.start },
+          { offset: 1, color: config.end }
         ])
       },
       emphasis: {
         focus: 'series',
         areaStyle: {
-          opacity: 1.0 // 鼠标悬停时完全不透明
+          opacity: 1.0
         }
       },
-      data: seriesMap[platform] || []
+      data: seriesMap[platform] || [],
+      connectNulls: false
     };
   });
 
+  // 计算 Y 轴的最大值
+  const allValues = Object.values(seriesMap).flat();
+  const maxValue = Math.max(...allValues, 0);
+  const yAxisMax = Math.ceil(maxValue * 1.1);
+
   const option = {
-    backgroundColor: '#fff', // 确保背景纯白
+    backgroundColor: '#fff',
     title: {
-      text: '岗位总量爬取总量',
+      text: '岗位爬取总量趋势',
       left: 'center',
       top: 8,
       textStyle: {
@@ -204,17 +208,26 @@ const renderChart = (categories: string[], seriesMap: Record<string, number[]>, 
         let total = 0;
         params.forEach(p => total += p.value);
 
-        // 标题显示总日期和总量
-        let html = `<div style="font-weight:bold; margin-bottom:6px; font-size:13px;">${params[0].name} <span style="font-weight:normal; font-size:12px; opacity:0.8">(总计: ${total >= 10000 ? (total/10000).toFixed(2)+'w' : total})</span></div>`;
+        let html = `<div style="font-weight:bold; margin-bottom:8px; font-size:13px;">
+          ${params[0].axisValue}
+          <span style="font-weight:normal; font-size:12px; opacity:0.8">
+            (总计: ${total >= 10000 ? (total/10000).toFixed(2)+'w' : total.toLocaleString()})
+          </span>
+        </div>`;
 
-        // 列表显示各平台
-        params.forEach(p => {
+        const sortedParams = [...params].sort((a, b) => b.value - a.value);
+
+        sortedParams.forEach(p => {
           let valDisplay = p.value;
-          if (p.value >= 10000) valDisplay = (p.value / 10000).toFixed(2) + 'w';
+          if (p.value >= 10000) {
+            valDisplay = (p.value / 10000).toFixed(2) + 'w';
+          } else {
+            valDisplay = p.value.toLocaleString();
+          }
 
-          html += `<div style="display:flex; justify-content:space-between; align-items:center; width:150px; margin-top:4px;">
+          html += `<div style="display:flex; justify-content:space-between; align-items:center; min-width:160px; margin-top:6px;">
             <span style="display:flex; align-items:center;">
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color};margin-right:6px;box-shadow:0 0 4px rgba(0,0,0,0.2);"></span>
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:8px;"></span>
               <span style="color:#555; font-size:12px;">${p.seriesName}</span>
             </span>
             <span style="font-weight:bold; color:#2c3e50; font-size:13px;">${valDisplay}</span>
@@ -225,7 +238,8 @@ const renderChart = (categories: string[], seriesMap: Record<string, number[]>, 
     },
     legend: {
       data: seriesList.map((s: any) => s.name),
-      bottom: 2, // 稍微离底部一点距离
+      bottom: 2,
+      left: 'center',
       icon: 'circle',
       itemWidth: 10,
       itemHeight: 10,
@@ -239,12 +253,12 @@ const renderChart = (categories: string[], seriesMap: Record<string, number[]>, 
     toolbox: {
       feature: {
         saveAsImage: {
-          title: '保存',
+          title: '保存为图片',
           pixelRatio: 2,
           iconStyle: { borderColor: '#999' }
         },
         magicType: {
-          title: { line: '折线', bar: '柱状' },
+          title: { line: '折线图', bar: '柱状图' },
           type: ['line', 'bar']
         }
       },
@@ -253,52 +267,56 @@ const renderChart = (categories: string[], seriesMap: Record<string, number[]>, 
       iconSize: 14
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '15%', // 给图例留足空间
-      top: '15%',
+      left: '8%',
+      right: '5%',
+      bottom: '12%',
+      top: '18%',
       containLabel: true
     },
-    xAxis: [
-      {
-        type: 'category',
-        boundaryGap: false,
-        data: categories,
-        axisLine: {
-          lineStyle: { color: '#e0e0e0', width: 1 }
-        },
-        axisTick: { show: false },
-        axisLabel: {
-          color: '#888',
-          fontSize: 10,
-          interval: 'auto',
-          margin: 10
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: categories.map(date => date.substring(5)),
+      axisLine: {
+        lineStyle: { color: '#e0e0e0', width: 1 }
+      },
+      axisTick: { show: false },
+      axisLabel: {
+        color: '#888',
+        fontSize: 10,
+        interval: 'auto',
+        margin: 10,
+        rotate: categories.length > 7 ? 30 : 0
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '岗位数量',
+      nameTextStyle: {
+        fontSize: 10,
+        color: '#888'
+      },
+      splitLine: {
+        lineStyle: {
+          type: 'dashed',
+          color: '#f0f0f0',
+          width: 1
         }
-      }
-    ],
-    yAxis: [
-      {
-        type: 'value',
-        splitLine: {
-          lineStyle: {
-            type: 'dashed',
-            color: '#f0f0f0',
-            width: 1
-          }
-        },
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: {
-          color: '#888',
-          fontSize: 10,
-          formatter: (value: number) => {
-            if (value >= 10000) return (value / 10000).toFixed(0) + 'w';
-            return value.toString();
-          }
-        },
-        min: 0
-      }
-    ],
+      },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: '#888',
+        fontSize: 10,
+        formatter: (value: number) => {
+          if (value >= 10000) return (value / 10000).toFixed(0) + 'w';
+          if (value >= 1000) return (value / 1000).toFixed(0) + 'k';
+          return value.toString();
+        }
+      },
+      min: 0,
+      max: yAxisMax
+    },
     series: seriesList
   };
 
@@ -335,8 +353,8 @@ const handleResize = () => {
   flex-grow: 0 !important;
   margin: 0 auto;
   background-color: #fff;
-  border-radius: 12px; /* 圆角稍微大一点，更现代 */
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06); /* 阴影更柔和 */
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   border: 1px solid #f5f5f5;
 }

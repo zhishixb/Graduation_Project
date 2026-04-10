@@ -1,7 +1,7 @@
-# backend/services/process/cleaning/job_data_reader.py
-import re
-from typing import Optional, Tuple
-from pathlib import Path  # 1. 导入 Path
+# 适合云算力的全量内存处理版本
+import sqlite3
+from typing import Optional, Tuple, List
+from pathlib import Path
 from loguru import logger
 from datetime import datetime
 
@@ -10,65 +10,101 @@ from backend.services.process.cleaning.public.base_database_manager import BaseD
 
 class JobDataReader(BaseDatabaseManager):
     """
-    涉及数据库：job_data（存储按照专业就业方向爬取的微调前体数据）
-    用于清洗数据时和数据库的交互
+    涉及数据库：job_data
+    用于清洗数据时和数据库的交互（针对多线程/内存预加载优化版）
     """
 
     TABLE_NAME = "parsed_jobs"
 
-    def __init__(self, db_path: Path):  # 2. 修改类型提示为 Path
+    def __init__(self, db_path: Path):
         super().__init__(str(db_path))
 
-        logger.debug(f"初始化全局职位读取器：{db_path}")  # loguru 可以直接打印 Path 对象
+        logger.debug(f"初始化全局职位读取器：{db_path}")
 
-    def get_next_unprocessed(self) -> Optional[Tuple[str, str, str]]:
+        # --- 性能优化关键代码 ---
+
+        # 1. 关闭同步模式 (大幅提升 UPDATE 速度)
+        # 默认是 FULL，每次写入都要等待磁盘确认。设为 OFF 后速度提升数倍。
+        # 风险：仅在电脑突然断电时可能丢失最后几秒数据，程序崩溃不影响。
+        try:
+            self.conn.execute("PRAGMA synchronous = OFF;")
+            self.conn.execute("PRAGMA journal_mode = MEMORY;")
+            logger.debug("SQLite 性能优化已应用 (synchronous=OFF)")
+        except Exception as e:
+            logger.warning(f"SQLite 优化设置失败: {e}")
+
+    # --- 内存预加载支持 ---
+
+    def get_all_pending_data(self) -> List[Tuple[str, str, str]]:
         """
-        获取全库中任意一条未处理的数据。
-        :return: (job_id, description) 或 None
+        【核心方法】一次性获取所有待处理数据到内存。
+        :return: List[(job_id, major_name, job_description), ...]
         """
         sql = f"""
         SELECT job_id, major_name, job_description 
         FROM "{self.TABLE_NAME}" 
-        WHERE processed_at IS NULL 
-        LIMIT 1;
+        WHERE processed_at IS NULL
         """
-        rows = self.execute_query(sql)
+        try:
+            rows = self.execute_query(sql)
+            if not rows:
+                return []
 
-        if not rows:
-            return None
+            # 转换为元组列表，方便多线程解包
+            return [
+                (row['job_id'], row['major_name'], row['job_description'])
+                for row in rows
+            ]
+        except Exception as e:
+            logger.error(f"全量读取数据失败: {e}")
+            return []
 
-        row = rows[0]
-        job_id = row.get('job_id')
-        major_name = row.get('major_name')
-        desc = row.get('job_description')
-
-        if not job_id or not desc:
-            if job_id:
-                self.mark_processed(job_id)
-            return None
-
-        return job_id, major_name, desc.strip()
-
-    def get_pending_count(self) -> int:
+    def batch_mark_processed(self, job_ids: List[str]) -> int:
         """
-        返回全库未处理记录数
+        【核心方法】批量标记为已处理。
+        使用 SQL IN 语句一次性更新，避免多线程频繁锁库。
+        :param job_ids: 待更新的 ID 列表
+        :return: 受影响的行数
         """
-        sql = f"SELECT COUNT(*) as c FROM \"{self.TABLE_NAME}\" WHERE processed_at IS NULL"
-        res = self.execute_query(sql)
-        return res[0]['c'] if res else 0
+        if not job_ids:
+            return 0
 
-    def mark_processed(self, job_id: str) -> bool:
-        """
-        按照job_id标记为已处理
-        """
+        # 构造 (?, ?, ?, ...) 占位符
+        placeholders = ','.join('?' * len(job_ids))
+
         sql = f"""
         UPDATE "{self.TABLE_NAME}" 
         SET processed_at = ? 
-        WHERE job_id = ?;
+        WHERE job_id IN ({placeholders});
         """
-        ts = datetime.now().isoformat()
-        affected = self.execute_update(sql, (ts, job_id))
-        return affected > 0
+
+        # 参数：(当前时间, id1, id2, ...)
+        params = [datetime.now().isoformat()] + job_ids
+
+        try:
+            return self.execute_update(sql, params)
+        except Exception as e:
+            logger.error(f"批量更新状态失败: {e}")
+            return 0
+
+    # --- 🛠️ 辅助方法 ---
+
+    def get_all_pending_ids(self) -> List[str]:
+        """
+        获取所有待处理任务的 ID 列表。
+        用于 tqdm 进度条计算总数（如果不使用内存预加载模式）。
+        """
+        sql = f"""
+        SELECT job_id 
+        FROM "{self.TABLE_NAME}" 
+        WHERE processed_at IS NULL
+        """
+        try:
+            cursor = self.conn.execute(sql)
+            return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"获取待处理 ID 列表失败: {e}")
+            return []
 
     def get_stats(self) -> dict:
         """

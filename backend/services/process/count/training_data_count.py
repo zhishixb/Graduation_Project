@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional, Union, Dict
 from loguru import logger
 
 # 确保导入路径正确
-from backend.services.process.count.training_data.csv_manager import DataCountRecorder
+from backend.services.process.count.public.csv_manager import DataCountRecorder
 from backend.services.process.cleaning.job.training_data.job_data_reader import JobDataReader
 
 

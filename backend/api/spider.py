@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from backend.controllers.job_dict_controller import JobDictController, TrainingDataCountController
+from backend.controllers.job_dict_controller import JobDictController, SpiderDataCountController
 
 router = APIRouter(prefix="/spider", tags=["爬虫功能"])
 
@@ -44,5 +44,5 @@ async def get_all_jobs():
 
 @router.get("/getTrainingDataCount")
 async def get_training_data_count():
-    training_data_count = TrainingDataCountController()
+    training_data_count = SpiderDataCountController()
     return training_data_count.get_training_data_count()
