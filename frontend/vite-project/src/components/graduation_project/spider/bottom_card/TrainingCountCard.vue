@@ -176,7 +176,7 @@ const renderChart = (
   // 计算 Y 轴的最大值
   const allValues = Object.values(seriesMap).flat();
   const maxValue = Math.max(...allValues, 0);
-  const yAxisMax = Math.ceil(maxValue * 1.1);
+  const yAxisMax = Math.ceil(maxValue * 2);
 
   const option = {
     backgroundColor: '#fff',

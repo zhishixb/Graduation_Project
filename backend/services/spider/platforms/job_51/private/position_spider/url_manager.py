@@ -4,7 +4,7 @@ class SpiderUrlManager:
     def __init__(self, function: str):
         self.function = function
         self.DEGREE_ONLY_BACHELOR = "04"
-        self.DEGREE_COMBINED = "03%2C04"
+        self.DEGREE_COMBINED = "03%2C04%2C05"
         self.degree = self.DEGREE_ONLY_BACHELOR   # 当前学历模式，可随时切换
         self.timestamp = int(time.time())
         self._build_url_part1()                   # 构建带时间戳的前缀
