@@ -11,14 +11,19 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    Bubble: typeof import('./components/graduation_project/achieve/Bubble.vue')['default']
     CompareCard: typeof import('./components/graduation_project/process/left_card/CompareCard.vue')['default']
     ControlCard: typeof import('./components/graduation_project/process/left_card/ControlCard.vue')['default']
     ControllCard: typeof import('./components/graduation_project/process/left_card/ControllCard.vue')['default']
+    HotMajors: typeof import('./components/graduation_project/achieve/HotMajors.vue')['default']
+    JobCascader: typeof import('./components/graduation_project/achieve/left_card/JobCascader.vue')['default']
     JobSpiderByMajorCard: typeof import('./components/graduation_project/spider/top_card/JobSpiderByMajorCard.vue')['default']
     JobSpiderByPositionCard: typeof import('./components/graduation_project/spider/top_card/JobSpiderByPositionCard.vue')['default']
+    MajorCascader: typeof import('./components/graduation_project/achieve/left_card/MajorCascader.vue')['default']
     MajorJobProcessCard: typeof import('./components/graduation_project/process/right_card/top_right_card/MajorJobProcessCard.vue')['default']
     MajorProcessCard: typeof import('./components/graduation_project/process/right_card/top_right_card/MajorProcessCard.vue')['default']
     MarqueeText: typeof import('./components/public/MarqueeText.vue')['default']
+    MatchScores: typeof import('./components/graduation_project/achieve/MatchScores.vue')['default']
     ModelCompareCard: typeof import('./components/graduation_project/process/left_card/compare/ModelCompareCard.vue')['default']
     NButton: typeof import('naive-ui')['NButton']
     NCascader: typeof import('naive-ui')['NCascader']

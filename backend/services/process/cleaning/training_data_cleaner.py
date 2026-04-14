@@ -1,10 +1,8 @@
-# 适合云算力的全量内存多线程处理版本
+# 适合云算力的全量内存多进程处理版本
 import csv
-import threading
-import queue
 from pathlib import Path
 from typing import List, Tuple, Optional
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from loguru import logger
 from tqdm import tqdm
 
@@ -13,6 +11,43 @@ from backend.services.process.cleaning.job.public.csv_manager import MajorCourse
 from backend.services.process.cleaning.job.public.job_description_parser import SimpleExtractor, LineCleaner
 from backend.services.process.cleaning.job.training_data.job_data_reader import JobDataReader
 
+
+def _process_single_item(data_item, major_csv_path):
+    """
+    模块级函数，用于多进程处理单个数据项。
+    :param data_item: (job_id, major_name, description)
+    :param major_csv_path: 专业课程 CSV 文件路径（字符串或 Path），在子进程中重新创建 MajorCourseFinder
+    :return: (job_id, (major_courses_text, cleaned_text)) 或 (job_id, None) 如果出错或清洗后文本为空
+    """
+    job_id, major_name, description = data_item
+    try:
+        # 在子进程中重新创建无状态对象（每个进程独立）
+        if major_csv_path:
+            course_finder = MajorCourseFinder(Path(major_csv_path))
+        else:
+            course_finder = None
+
+        extractor = SimpleExtractor()
+        cleaner = LineCleaner()
+
+        # 获取课程描述
+        major_courses_text = ""
+        if course_finder and major_name:
+            courses = course_finder.get_courses(major_name)
+            major_courses_text = courses if courses else ""
+
+        # 清洗职位描述
+        raw_sections = extractor.extract(description)
+        cleaned_text = cleaner.process_sections(raw_sections)
+
+        # 检查清洗后的文本是否为空
+        if not cleaned_text or not cleaned_text.strip():
+            return job_id, None
+
+        return job_id, (major_courses_text, cleaned_text)
+    except Exception as e:
+        logger.error(f"处理任务 {job_id} 时发生错误: {e}")
+        return job_id, None
 
 class TrainingDataCleaner:
     def __init__(self, db_path: Path, csv_path: Path, major_csv_path: Path):
@@ -23,12 +58,10 @@ class TrainingDataCleaner:
         self.csv_path = csv_path
         self.major_csv_path = major_csv_path
 
-        # 初始化组件
+        # 初始化组件（主要用于单线程模式，多进程模式下子进程会自己创建）
         self.db_manager = JobDataReader(self.db_path)
         self.extractor = SimpleExtractor()
         self.cleaner = LineCleaner()
-
-        # 初始化专业课程查找器
         try:
             self.course_finder = MajorCourseFinder(major_csv_path)
             logger.info(f"成功加载专业课程数据：{self.major_csv_path}")
@@ -41,95 +74,55 @@ class TrainingDataCleaner:
 
     def clean_training_data_in_memory(self, max_workers: int = 4) -> int:
         """
-        【高性能版】内存预加载 + 多线程处理
+        【高性能多进程版】内存预加载 + 多进程处理
         1. 一次性读取所有数据到内存
-        2. 多线程并行清洗
+        2. 多进程并行清洗（真正利用多核）
         3. 批量写入 CSV 和 批量更新数据库
         """
-        logger.info(f"🚀 启动内存预加载多线程模式 | 线程数: {max_workers}")
+        logger.info(f"🚀 启动内存预加载多进程模式 | 进程数: {max_workers}")
 
-        if self.course_finder is None:
-            logger.warning("未加载课程查找器，输出中将不包含课程信息。")
-
-        # --- 1. 主线程：全量读取数据到内存 ---
-        # 调用 JobDataReader 的新方法
+        # 1. 主进程读取所有待处理数据
         all_data = self.db_manager.get_all_pending_data()
-
         total_count = len(all_data)
         if total_count == 0:
             logger.info("没有待处理的数据，任务结束。")
             return 0
 
-        logger.info(f"✅ 已加载 {total_count} 条数据到内存，开始多线程处理...")
+        logger.info(f"✅ 已加载 {total_count} 条数据到内存，开始多进程处理...")
 
-        # 线程安全的结果队列
-        result_queue = queue.Queue()
-        # 进度条锁（防止多线程同时更新进度条导致显示错乱）
-        pbar_lock = threading.Lock()
+        # 准备传递给子进程的参数（将路径转为字符串，便于 pickle）
+        major_csv_path_str = str(self.major_csv_path) if self.major_csv_path else None
 
-        def process_single_item(data_item):
-            """
-            工作线程执行的具体任务
-            """
-            job_id, major_name, description = data_item
-
-            try:
-                # --- 核心业务逻辑 (同之前) ---
-
-                # A. 获取课程描述
-                major_courses_text = ""
-                if self.course_finder and major_name:
-                    courses = self.course_finder.get_courses(major_name)
-                    major_courses_text = courses if courses else ""
-
-                # B. 清洗职位描述
-                raw_sections = self.extractor.extract(description)
-                cleaned_text = self.cleaner.process_sections(raw_sections)
-
-                # C. 将结果放入队列 (job_id, (courses, cleaned_text))
-                result_queue.put((job_id, (major_courses_text, cleaned_text)))
-
-            except Exception as e:
-                logger.error(f"处理任务 {job_id} 时发生错误: {e}")
-                # 出错也放入队列，标记为 None，防止主线程等待
-                result_queue.put((job_id, None))
-
-        # --- 2. 多线程并行处理 ---
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # 提交所有任务
-            # map 会保持提交顺序，但我们需要的是并发执行，所以用 submit + as_completed 或者直接 list(executor.map)
-            # 这里为了简单展示进度，我们使用 list 消费，配合 tqdm
-            list(tqdm(
-                executor.map(process_single_item, all_data),
+        # 2. 多进程并行处理
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            # map 保持输入顺序，结果列表与 all_data 顺序一致
+            results = list(tqdm(
+                executor.map(_process_single_item, all_data, [major_csv_path_str] * total_count),
                 total=total_count,
-                desc="多线程清洗中",
+                desc="多进程清洗中",
                 unit="条",
                 colour="magenta",
-                mininterval = 0.5,  # 👈 加上这个：每 0.5 秒刷新一次界面，极大提升流畅度
-                smoothing = 0.1  # 👈 加上这个：减少平滑预测，显示更实时的速度
+                mininterval=0.5,
+                smoothing=0.1
             ))
 
-        # --- 3. 收集结果并写入 ---
-        logger.info("处理完成，正在写入 CSV 和更新数据库...")
-
+        # 3. 收集结果
         successful_count = 0
         results_to_write: List[Tuple[str, str]] = []
         processed_ids: List[str] = []
 
-        # 从队列取出所有结果
-        while not result_queue.empty():
-            job_id, result = result_queue.get()
-            if result:
+        for job_id, result in results:
+            if result is not None:
                 results_to_write.append(result)
                 processed_ids.append(job_id)
                 successful_count += 1
 
-        # 批量写入 CSV
+        # 4. 批量写入 CSV
         if results_to_write:
             write_header = not self.csv_path.exists()
             self._write_to_csv(results_to_write, write_header=write_header)
 
-            # 批量更新数据库状态 (一次性更新所有 ID)
+            # 5. 批量更新数据库状态（主进程执行）
             self.db_manager.batch_mark_processed(processed_ids)
 
             logger.success(f"✅ 任务完成！成功处理：{successful_count} 条。")
@@ -137,74 +130,6 @@ class TrainingDataCleaner:
             logger.warning("没有生成任何有效数据。")
 
         return successful_count
-
-    def clean_training_data(self, batch_size: int = 500) -> int:
-        """
-        【旧版】单线程顺序处理
-        保留此方法作为备用，或者用于调试。
-        """
-        logger.info(f"开始单线程清洗任务...")
-
-        pending_ids = self.db_manager.get_all_pending_ids()
-        total_count = len(pending_ids)
-        if total_count == 0: return 0
-
-        processed_count = 0
-        error_count = 0
-        results_to_write: List[Tuple[str, str]] = []
-        write_header = not self.csv_path.exists()
-
-        try:
-            with tqdm(total=total_count, desc="单线程清洗", unit="条", colour="green") as pbar:
-                for job_id in pending_ids:
-                    raw_data = self.db_manager.get_data_by_id(job_id)
-                    if not raw_data: continue
-
-                    if len(raw_data) == 3:
-                        current_job_id, major_name, description = raw_data
-                    elif len(raw_data) == 2:
-                        current_job_id, description = raw_data
-                        major_name = ""
-                    else:
-                        continue
-
-                    try:
-                        major_courses_text = ""
-                        if self.course_finder and major_name:
-                            courses = self.course_finder.get_courses(major_name)
-                            major_courses_text = courses if courses else ""
-
-                        raw_sections = self.extractor.extract(description)
-                        cleaned_text = self.cleaner.process_sections(raw_sections)
-
-                        results_to_write.append((major_courses_text, cleaned_text))
-
-                        if self.db_manager.mark_processed(current_job_id):
-                            processed_count += 1
-
-                        pbar.update(1)
-
-                        if len(results_to_write) >= batch_size:
-                            self._write_to_csv(results_to_write, write_header=write_header)
-                            write_header = False
-                            results_to_write.clear()
-
-                    except Exception as e:
-                        logger.error(f"处理任务 {current_job_id} 时发生错误: {e}")
-                        error_count += 1
-                        self.db_manager.mark_processed(current_job_id)
-                        pbar.update(1)
-                        continue
-
-            if results_to_write:
-                self._write_to_csv(results_to_write, write_header=write_header)
-
-            logger.success(f"单线程任务完成！成功：{processed_count}, 失败：{error_count}")
-            return processed_count
-
-        except Exception as e:
-            logger.critical(f"任务严重异常中断: {e}")
-            raise
 
     def _write_to_csv(self, data: List[Tuple[str, str]], write_header: bool = False):
         """
