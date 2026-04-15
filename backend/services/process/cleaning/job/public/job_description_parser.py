@@ -1,4 +1,3 @@
-import os
 import re
 from typing import List
 
@@ -74,7 +73,7 @@ class SimpleExtractor:
     @staticmethod
     def _remove_periods(s: str) -> str:
         """移除中英文句号"""
-        return s.replace('。', '').replace('.', '')
+        return s.replace('。', '').replace('.', '').replace('；','').replace(';', '')
 
     def extract(self, text: str) -> List[List[str]]:
         lines = text.splitlines()
@@ -152,16 +151,17 @@ class LineCleaner:
 
         # 要求
         '岁', '气质', '能力优秀', '违法', '驾照', '年以上工作经验', '年工作经验',
-        '有经验者优先', '优秀者', '差错', '驻',
+        '有经验者优先', '优秀者', '差错', '高质量', '独立',
 
         # 状态表示
         '热爱', '反馈', '出差', '顺利开展', '发展趋势', '提供', '总结', '顺利进行',
         '盈利', '提升', '淘汰', '结果', '长期', '浓厚兴趣', '成功', '文化氛围',
-        '工作环境', '按时完成', '预期效果', '确保', '清晰',
+        '工作环境', '按时完成', '预期效果', '确保', '清晰', '排班', '学员',
 
         # 宽泛的工作内容
         '实操指导', '利润', '全面评估', '项目进度', '保障', '资源调配', '风险',
-        '推动', '新工具', '技术规范', '日常', '协助完成',
+        '推动', '新工具', '技术规范', '日常', '协助完成', '拓展', '内部资源',
+        '目标', '指导', '痛点',
 
         # 软技能
         '抗压', '学习能力', '沟通', '职业发展', '团队', '团体',
@@ -169,10 +169,10 @@ class LineCleaner:
         '服从', '形象', '气质', '口齿', '表达', '思维敏捷', '应变',
         '职业道德', '敬业精神', '责任心', '事业心', '激情', '自信', '执行力',
         '思维活跃', '创意', '时事', '亲和力', '职业素养', '有想法', '审美能力',
-        '审美情趣', '服务意识', '耐心', '专注', '逻辑', '思维', '问题分析',
+        '审美情趣', '耐心', '专注', '逻辑', '思维', '问题分析',
         '热情', '热爱', '责任心', '团队合作', '沟通能力', '抗压能力', '学习能力',
         '逻辑思维', '分析能力', '快节奏', '意识', '亲和', '正直', '善良', '谈吐',
-        '工作压力',
+        '工作压力', '时间观', '适应', '不良', '韧性', '求知欲',
 
         # 学历
         '本科', '毕业生', '不限', '应届生', '大专', '专业', '资格证',
@@ -184,9 +184,9 @@ class LineCleaner:
         self.leader_pattern = re.compile(
             r'^\s*' +
             r'(?:' +
-            r'[\*\-•●▪▸➢➔➣➤➥➦➧➨➩➪➫➬➭➮➯➱➲➳➴➵➶➷➸➹➺➻➼➽➾]' +  # 新增 * 和 -
+            r'[\*\-•●▪▸➢➔➣➤➥➦➧➨➩➪➫➬➭➮➯➱➲➳➴➵➶➷➸➹➺➻➼➽➾]' +
             r'|' +
-            r'[0-9]+[\.、\)]' +
+            r'[0-9]+[\.．、\)]' +
             r'|' +
             r'[一二三四五六七八九十]+[、\.．]' +
             r'|' +
@@ -198,7 +198,6 @@ class LineCleaner:
             r')' +
             r'\s*'
         )
-
         # 年限匹配正则
         self.year_pattern = re.compile(
             r'\d+[-~]\d+年(?:以上|及以下|及以上)?' +
@@ -212,9 +211,13 @@ class LineCleaner:
 
     def clean_line(self, line: str) -> str:
         # --- 第一步：去除行首序号 ---
-        line = self.pattern.sub('', line)
+        line = self.leader_pattern.sub('', line)
         line = re.sub(r'^\s*\d+(?:[\.、\)）]\s*|\s+)', '', line)
-        line = re.sub(r'^\s*\*+\s*', '', line)
+
+        line = line.replace('优先考虑', '')
+        line = line.replace('经验', '')
+        line = line.replace('者优先', '')
+        line = line.replace('优先', '')
 
         # --- 第二步：按逗号分割并过滤 ---
         parts = re.split(r'[，,]', line)
@@ -225,14 +228,18 @@ class LineCleaner:
             if not part:
                 continue
 
+            part = re.sub(r'^.*?[：:]', '', part)
+            part = part.lstrip()
+
             # 1. 检查是否包含废弃词（整段丢弃）
             if any(kw in part for kw in self.KEYWORD_BLACKLIST):
                 continue
 
+            part = re.sub(r'^\s*\d+', '', part)
+            part = part.lstrip()
+
             # 2.局部清洗（去除年限，保留其余内容）
             part = self.year_pattern.sub('', part)
-
-            # 清洗后再次去除首尾空格（因为删除了中间的词，可能留下多余空格）
             part = part.strip()
 
             # 如果清洗后不为空，则保留
