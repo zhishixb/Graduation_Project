@@ -91,6 +91,31 @@ class BaseDatabaseManager:
             if cursor:
                 cursor.close()
 
+    def execute_many_update(self, sql: str, params_list: List[tuple]) -> int:
+        """
+        执行批量 INSERT/UPDATE/DELETE 操作，返回受影响的总行数。
+        :param sql: SQL 语句（使用 ? 占位符）
+        :param params_list: 参数列表，每个元素是一个元组，对应一条记录的参数
+        :return: 受影响的行数总和
+        """
+        if not self.conn:
+            self._connect()
+
+        cursor = None
+        try:
+            cursor = self.conn.cursor()
+            cursor.executemany(sql, params_list)
+            self.conn.commit()
+            return cursor.rowcount
+        except Exception as e:
+            if self.conn:
+                self.conn.rollback()
+            logger.error(f"SQL Batch Update 失败：{e} | SQL: {sql} | Params count: {len(params_list)}")
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+
     def execute_stream_query(self, sql: str, params: tuple = None) -> Generator[Dict[str, Any], None, None]:
         """
         流式执行查询，逐行 yield 结果（节省内存）。
