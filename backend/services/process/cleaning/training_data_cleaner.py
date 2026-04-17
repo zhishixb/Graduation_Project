@@ -62,7 +62,7 @@ class TrainingDataCleaner:
         """
         初始化清洗器。
         :param db_path: 原始岗位数据库路径
-        :param csv_path: 输出 CSV 路径
+        :param csv_path: 输出 CSV 路径（major_courses, cleaned_requirements）
         :param major_csv_path: 专业课程映射 CSV 路径
         :param subject_csv_path: 专业→一级学科映射 JSON 路径
         """
@@ -101,6 +101,7 @@ class TrainingDataCleaner:
         1. 一次性读取所有数据到内存
         2. 多进程并行清洗（真正利用多核）
         3. 批量写入 CSV 和 批量更新数据库
+        额外写入一个 CSV 文件，包含 major_name 和 cleaned_requirements
         """
         # 重置所有处理标记，确保全量重新处理（可选，根据需求注释）
         self.db_manager.reset_all_processed_at()
@@ -142,21 +143,28 @@ class TrainingDataCleaner:
 
         # 3. 收集结果，统计各专业成功数量
         successful_count = 0
-        results_to_write: List[Tuple[str, str]] = []
+        results_to_write: List[Tuple[str, str]] = []          # (major_courses, cleaned_text)
+        results_to_write_major: List[Tuple[str, str]] = []    # (major_name, cleaned_text)
         major_counter = Counter()
-        successful_pairs: List[Tuple[str, str]] = []  # 存储 (job_id, major_name) 用于数据库更新
+        successful_pairs: List[Tuple[str, str]] = []          # (job_id, major_name)
 
         for job_id, major_name, result in results:
             if result is not None:
-                results_to_write.append(result)
+                major_courses_text, cleaned_text = result
+                results_to_write.append((major_courses_text, cleaned_text))
+                results_to_write_major.append((major_name, cleaned_text))
                 successful_pairs.append((job_id, major_name))
                 successful_count += 1
-                major_counter[major_name] += 1   # 累加专业统计
+                major_counter[major_name] += 1
 
         # 4. 批量写入 CSV
         if results_to_write:
             write_header = not self.csv_path.exists()
             self._write_to_csv(results_to_write, write_header=write_header)
+
+            # 额外写入 major_name + cleaned_requirements 的 CSV
+            major_csv_path = self.csv_path.with_stem(self.csv_path.stem + "_major")
+            self._write_major_csv(results_to_write_major, major_csv_path)
 
             # 5. 批量更新数据库状态（使用复合主键精确标记）
             self.db_manager.batch_mark_processed(successful_pairs)
@@ -176,7 +184,7 @@ class TrainingDataCleaner:
 
     def _write_to_csv(self, data: List[Tuple[str, str]], write_header: bool = False):
         """
-        将结果写入 CSV。
+        将结果写入 CSV（major_courses, cleaned_requirements）。
         """
         mode = 'a' if not write_header else 'w'
         with open(self.csv_path, mode, encoding='utf-8-sig', newline='') as f:
@@ -185,4 +193,16 @@ class TrainingDataCleaner:
                 writer.writerow(['major_courses', 'cleaned_requirements'])
             for row in data:
                 writer.writerow(row)
-        logger.debug(f"已批量写入 {len(data)} 条记录")
+        logger.debug(f"已批量写入 {len(data)} 条记录到 {self.csv_path}")
+
+    def _write_major_csv(self, data: List[Tuple[str, str]], output_path: Path, write_header: bool = True):
+        """
+        写入 major_name 和 cleaned_requirements 到指定的 CSV 文件。
+        """
+        with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
+            writer = csv.writer(f)
+            if write_header:
+                writer.writerow(['major_name', 'cleaned_requirements'])
+            for row in data:
+                writer.writerow(row)
+        logger.debug(f"已写入 {len(data)} 条记录到 {output_path}")

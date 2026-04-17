@@ -1,9 +1,9 @@
+import os
 import shutil
 from pathlib import Path
 from c2net.context import prepare
 
-# 确保这个路径在你的 OpenI 环境中是正确的
-# 如果 TrainingDataCleaner 在子文件夹，请调整为 from backend... import ...
+# 确保导入路径正确
 from training_data_cleaner import TrainingDataCleaner
 
 
@@ -17,8 +17,9 @@ def run_pipeline_on_openi():
     # A. 获取挂载的只读源路径 (仅数据库)
     source_db_path = Path(c2net_context.dataset_path) / "job_data" / "job_data.db"
 
-    # B. 获取本地已上传的源路径 (仅 CSV)
+    # B. 获取本地已上传的源路径 (CSV 和 JSON)
     source_csv_path = Path.cwd() / "major_data.csv"
+    source_json_path = Path.cwd() / "51job_major_status.json"
 
     # C. 定义容器内的可写工作路径
     work_dir = Path("/tmp/work")
@@ -26,7 +27,9 @@ def run_pipeline_on_openi():
 
     local_db_path = work_dir / "job_data.db"
     local_major_csv_path = work_dir / "major_data.csv"
+    local_major_status_json_path = work_dir / "51job_major_status.json"
     output_csv_path = work_dir / "cleaned_output.csv"
+    output_major_csv_path = output_csv_path.with_stem(output_csv_path.stem + "_major")  # cleaned_output_major.csv
 
     # 2. 预处理：复制文件到可写目录
     print(f"📂 正在准备文件...")
@@ -45,24 +48,29 @@ def run_pipeline_on_openi():
     shutil.copy(source_csv_path, local_major_csv_path)
     print(f"✅ CSV 已就位: {local_major_csv_path}")
 
-    # 3. 实例化并运行
-    if output_csv_path.exists():
-        output_csv_path.unlink()
-        print(f"🧹 发现旧的输出文件，已清除: {output_csv_path}")
+    if not source_json_path.exists():
+        print(f"❌ 错误：找不到 JSON 文件 {source_json_path}")
+        return
+    shutil.copy(source_json_path, local_major_status_json_path)
+    print(f"✅ JSON 已就位: {local_major_status_json_path}")
+
+    # 3. 清除旧的输出文件（两个 CSV）
+    for f in [output_csv_path, output_major_csv_path]:
+        if f.exists():
+            f.unlink()
+            print(f"🧹 发现旧的输出文件，已清除: {f}")
 
     try:
         print(f"⚙️ 初始化清洗器...")
         cleaner = TrainingDataCleaner(
             db_path=local_db_path,
             csv_path=output_csv_path,
-            major_csv_path=local_major_csv_path
+            major_csv_path=local_major_csv_path,
+            subject_csv_path=local_major_status_json_path
         )
 
         print("🚀 开始多线程清洗任务 (内存预加载模式)...")
-
-        # 👇 修改点：调用新的高性能方法，开启 4 个线程
         count = cleaner.clean_training_data_in_memory(max_workers=4)
-
         print(f"🎉 任务结束！成功处理了 {count} 条数据。")
 
         # 4. 将结果复制回当前目录，方便查看和下载
@@ -71,9 +79,14 @@ def run_pipeline_on_openi():
             shutil.copy(output_csv_path, final_result)
             print(f"📥 结果已保存到当前目录: {final_result}")
 
-            # 打印最终统计
-            stats = cleaner.db_manager.get_stats()
-            print(f"📊 数据库最终状态 -> 总数:{stats['total']}, 已完成:{stats['processed']}")
+        if output_major_csv_path.exists():
+            final_major_result = Path.cwd() / "cleaned_output_major.csv"
+            shutil.copy(output_major_csv_path, final_major_result)
+            print(f"📥 结果已保存到当前目录: {final_major_result}")
+
+        # 打印最终统计
+        stats = cleaner.db_manager.get_stats()
+        print(f"📊 数据库最终状态 -> 总数:{stats['total']}, 已完成:{stats['processed']}")
 
     except Exception as e:
         print(f"❌ 运行出错: {e}")
