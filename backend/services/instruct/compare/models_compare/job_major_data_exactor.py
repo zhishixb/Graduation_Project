@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from backend.services.process.cleaning.job.public.csv_manager import MajorCourseFinder
-from backend.services.process.cleaning.job.public._disable_job_description_parser import JobDescriptionParser
+from backend.services.process.cleaning.job.public.job_description_parser import SimpleExtractor, LineCleaner
 from backend.services.spider.platforms.job_51.private.position_spider.dao import JobDatabaseManager
 
 
@@ -23,7 +23,8 @@ class JobMajorDataExactor:
             db_path = Path(db_path)
 
         self.db_manager = JobDatabaseManager(db_path, default_function=default_function)
-        self.data_cleaner = JobDescriptionParser()
+        self.extractor = SimpleExtractor()
+        self.cleaner = LineCleaner()
         self.job_detail_exactor = MajorCourseFinder(csv_path)
 
     def get_major_detail(self, major_name: str) -> str:
@@ -55,7 +56,8 @@ class JobMajorDataExactor:
             desc_text = item['job_description']
 
             # 获取该条描述的所有要求列表 (例如: ['要求A', '要求B', ...])
-            reqs_list = self.data_cleaner.get_requirements_text(desc_text, clean=True)
+            raw_sections = self.extractor.extract(desc_text)
+            reqs_list = self.cleaner.process_sections(raw_sections)
 
             # 初始化列表如果不存在
             if func_name not in func_requirements_map:

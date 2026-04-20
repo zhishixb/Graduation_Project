@@ -67,6 +67,17 @@ class SpiderPosition:
 
             # 3. 开始爬取循环
 
+            # 判断是否爬取过
+            has_done = self.job_database_manager.get_count_by_default_function()
+            continue_spider = self.status_file_manager.read()
+
+            if has_done > 0 and continue_spider == 0:
+                self.logger.info(f"数据库中已有 {has_done} 条数据，跳过爬取。")
+                self.job_status.set_state_completed()
+                page_num = 1
+                count = 110
+                return
+
             # 使用 with 语句管理浏览器会话
             with self.browser_session as session:
                 # ✅ 修复：使用 self.logger 而不是 self.logger
@@ -80,14 +91,6 @@ class SpiderPosition:
                 print(self.url_manager.get_url(page_num))
 
                 count = self.job_status.get_count()
-
-                has_done = self.job_database_manager.get_count_by_default_function()
-                continue_spider = self.status_file_manager.read()
-
-                if has_done > 0 and continue_spider == 0:
-                    self.logger.info(f"数据库中已有 {has_done} 条数据，跳过爬取。")
-                    self.job_status.set_state_completed()
-                    return
 
                 while count < self.target and not self._stop_requested:
                     if progress_callback:

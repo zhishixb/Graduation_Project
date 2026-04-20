@@ -57,7 +57,7 @@
 
       <!-- 使用 n-tabs 替代原来的顶部导航 -->
       <n-tabs v-model:value="activeTab" class="custom-tabs" @update:value="onTabChange">
-        <n-tab-pane name="dashboard" tab="Dashboard">
+        <n-tab-pane name="dashboard" tab="快速页面">
           <div :class="['tab-content', { 'fade-out': isFadingOut }]">
             <div class="content-area">
               <div class="left-column">
