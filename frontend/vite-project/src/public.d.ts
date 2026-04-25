@@ -15,6 +15,7 @@ declare module 'vue' {
     CompareCard: typeof import('./components/graduation_project/process/left_card/CompareCard.vue')['default']
     ControlCard: typeof import('./components/graduation_project/process/left_card/ControlCard.vue')['default']
     ControllCard: typeof import('./components/graduation_project/process/left_card/ControllCard.vue')['default']
+    FunctionCard: typeof import('./components/graduation_project/achieve/left_card/FunctionCard.vue')['default']
     HotMajors: typeof import('./components/graduation_project/achieve/HotMajors.vue')['default']
     JobCascader: typeof import('./components/graduation_project/achieve/left_card/JobCascader.vue')['default']
     JobSpiderByMajorCard: typeof import('./components/graduation_project/spider/top_card/JobSpiderByMajorCard.vue')['default']
@@ -41,6 +42,7 @@ declare module 'vue' {
     NTag: typeof import('naive-ui')['NTag']
     NTooltip: typeof import('naive-ui')['NTooltip']
     NumberCard: typeof import('./components/graduation_project/spider/top_card/NumberCard.vue')['default']
+    RedBookSpider: typeof import('./components/graduation_project/spider/top_card/RedBookSpider.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SearchCard: typeof import('./components/graduation_project/spider/top_card/SearchCard.vue')['default']
@@ -49,5 +51,6 @@ declare module 'vue' {
     Temp_1: typeof import('./components/graduation_project/process/temp_1.vue')['default']
     Temp_3: typeof import('./components/graduation_project/process/temp_3.vue')['default']
     TrainingCountCard: typeof import('./components/graduation_project/spider/bottom_card/TrainingCountCard.vue')['default']
+    WaterDrop: typeof import('./components/graduation_project/achieve/animated/WaterDrop.vue')['default']
   }
 }

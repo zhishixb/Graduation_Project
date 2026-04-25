@@ -1,3 +1,4 @@
+// stores/spider/job_by_position.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getJobList } from '@/apis/spider'
@@ -5,9 +6,9 @@ import { getJobList } from '@/apis/spider'
 // ==================== 类型定义 ====================
 interface MajorDetail {
   id: string
-  uid?: number          // 新增唯一数字ID
+  uid?: number
   count: number
-  state: string
+  state: string   // 'pending' 或 'completed'
 }
 
 interface RawDataMap {
@@ -20,7 +21,7 @@ interface RawDataMap {
 
 interface CascaderOption {
   label: string
-  value: string          // 使用 uid 的字符串形式
+  value: string
   disabled?: boolean
   children?: CascaderOption[]
   _fullPath?: {
@@ -74,15 +75,14 @@ function isRawDataMap(obj: unknown): obj is RawDataMap {
 export const useJobByPositionStore = defineStore('jobByPosition', () => {
   // ==================== State ====================
   const rawCascaderData = ref<RawDataMap | null>(null)
-  const selectedPositionUid = ref<number | null>(null)   // 存储选中的 uid
+  const selectedPositionUid = ref<number | null>(null)
   const isLoadingData = ref(false)
   const isRunning = ref(false)
   const isAutoRunning = ref(false)
-  const autoQueue = ref<AutoQueueItem[]>([])   // 自动队列存储完整信息
-  const currentPosition = ref<string | null>(null)       // 当前爬取的职位名称（用于显示）
+  const autoQueue = ref<AutoQueueItem[]>([])
+  const currentPosition = ref<string | null>(null)
   const ws = ref<WebSocket | null>(null)
 
-  // UI 反馈
   const contentText = ref('等待选择...')
   const contentColor = ref('#969696')
   const logs = ref<string[]>([])
@@ -100,7 +100,6 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
   let stopRequested = false
 
   // ==================== Getters ====================
-  // 级联选项（使用 uid 作为 value）
   const cascaderOptions = computed<CascaderOption[]>(() => {
     if (!rawCascaderData.value) return []
     const options: CascaderOption[] = []
@@ -121,7 +120,7 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
           }
           secondaryNode.children!.push({
             label: position,
-            value: String(uid),           // 使用 uid 字符串作为唯一值
+            value: String(uid),
             disabled: !isPending,
             _fullPath: { category, secondary, major: position, id: detail.id, uid },
           })
@@ -133,7 +132,6 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
     return options
   })
 
-  // uid 到完整路径信息的映射
   const majorPathMap = computed<Map<number, MajorPathInfo>>(() => {
     const map = new Map<number, MajorPathInfo>()
     if (!rawCascaderData.value) return map
@@ -153,7 +151,19 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
     return map
   })
 
-  // 辅助：根据 uid 获取职位名称
+  // 🆕 判断是否所有职位都已完成（没有 pending）
+  const allCompleted = computed(() => {
+    if (!rawCascaderData.value) return false
+    for (const [, secondaries] of Object.entries(rawCascaderData.value)) {
+      for (const [, majors] of Object.entries(secondaries as any)) {
+        for (const detail of Object.values(majors as any)) {
+          if ((detail as any).state === 'pending') return false
+        }
+      }
+    }
+    return true
+  })
+
   function getPositionNameByUid(uid: number): string {
     return majorPathMap.value.get(uid)?.major ?? '未知职位'
   }
@@ -176,8 +186,12 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
       if (res && typeof res === 'object' && 'success' in res) {
         if (res.success && res.data && isRawDataMap(res.data)) {
           rawCascaderData.value = res.data
-          updateContent('数据就绪，请选择专业', '#37ddbf')
-          console.log('✅ 数据加载成功，条目数:', Object.keys(res.data).length)
+          if (allCompleted.value) {
+            updateContent('全部职位已处理', '#52c41a')
+          } else {
+            updateContent('数据就绪，请选择职位', '#37ddbf')
+          }
+          console.log('数据加载成功，条目数:', Object.keys(res.data).length)
         } else {
           rawCascaderData.value = {}
           updateContent(res.message || '数据格式不正确', '#ff4d4f')
@@ -196,9 +210,8 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
     }
   }
 
-  // 选择职位：value 是 uid 字符串
   function selectPosition(value: string | null) {
-    if (isAutoRunning.value) return
+    if (isAutoRunning.value || allCompleted.value) return
     if (value === null) {
       selectedPositionUid.value = null
       updateContent('等待选择...', '#969696')
@@ -221,9 +234,8 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
     }
   }
 
-  // 构建自动队列：返回所有 pending 职位的 AutoQueueItem[]
   function prepareAutoQueue(): AutoQueueItem[] {
-    if (!rawCascaderData.value) return []
+    if (!rawCascaderData.value || allCompleted.value) return []
     const queue: AutoQueueItem[] = []
     for (const [category, secondaries] of Object.entries(rawCascaderData.value)) {
       for (const [secondary, majors] of Object.entries(secondaries)) {
@@ -241,7 +253,6 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
     return queue
   }
 
-  // 处理单个职位爬取（接收 uid）
   function runSinglePosition(uid: number, onMessage: Function, onError: Function): Promise<void> {
     return new Promise((resolve, reject) => {
       const pathInfo = majorPathMap.value.get(uid)
@@ -251,7 +262,6 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
       }
       const positionName = pathInfo.major
 
-      // 关闭旧连接
       if (ws.value) {
         ws.value.onclose = null
         ws.value.close()
@@ -350,7 +360,6 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
     })
   }
 
-  // 处理自动队列中的下一个
   async function processNextInQueue(onMessage: Function, onError: Function) {
     if (!isAutoRunning.value || stopRequested) {
       finishAuto(onMessage)
@@ -449,13 +458,17 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
   }
 
   async function startTask(
-    positionUidStr: string | null,    // 手动模式传入 uid 字符串（来自 cascader 的 value）
+    positionUidStr: string | null,
     autoMode: boolean,
     onMessage: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void,
     onError?: (msg: string) => void
   ) {
     if (isRunning.value) {
       onError?.('任务正在运行中')
+      return
+    }
+    if (autoMode && allCompleted.value) {
+      onError?.('所有职位均已完成，无可爬取任务')
       return
     }
     stopRequested = false
@@ -515,9 +528,8 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
   }
 
   return {
-    // state
     rawCascaderData,
-    selectedPositionUid,        // 改为 uid 存储
+    selectedPositionUid,
     isLoadingData,
     isRunning,
     isAutoRunning,
@@ -528,10 +540,9 @@ export const useJobByPositionStore = defineStore('jobByPosition', () => {
     logs,
     progressState,
     percent,
-    // getters
     cascaderOptions,
     majorPathMap,
-    // actions
+    allCompleted,
     fetchCountJobs,
     selectPosition,
     startTask,

@@ -1,19 +1,14 @@
 <template>
-  <div
-    class="search-spider-card"
-    :class="[
-      `status-${store.isRunning ? 'running' : 'idle'}`,
-      { 'status-completed': store.allCompleted }
-    ]"
-    id="spider-job-51job-card-container"
-  >
+  <div class="search-spider-card" :class="`status-${store.isRunning ? 'running' : 'idle'}`" id="spider-job-51job-card-container">
     <div class="start-card-left">
       <div class="search-spider-card-title">
-        {{ store.isAutoRunning ? '🤖 自动批量爬取' : '51Job岗位爬取' }}
+        {{ store.isAutoRunning ? '🤖 自动批量爬取' : '小红书爬取' }}
       </div>
+
       <div class="search-spider-card-state">
         <MarqueeText :text="store.contentText" :speed="3.5" :color="store.contentColor" />
       </div>
+
       <div style="height: 30px">
         <transition name="fade">
           <div v-show="store.logs.length > 0" class="signal-log-area">
@@ -21,6 +16,7 @@
           </div>
         </transition>
       </div>
+
       <div class="start-card-info-placeholder">
         <n-button
           strong
@@ -36,6 +32,7 @@
     </div>
 
     <div class="start-card-right">
+      <!-- 手动模式：级联选择器（支持一层数据） -->
       <n-cascader
         v-if="!store.isRunning && !store.isAutoRunning"
         v-model:value="store.selectedPositionUid"
@@ -43,7 +40,7 @@
         placeholder="选职位"
         size="small"
         clearable
-        :disabled="store.isLoadingData || store.allCompleted"
+        :disabled="store.isLoadingData"
         filterable
         :show-path="true"
         style="width: 100%; margin-top: -10px"
@@ -51,8 +48,9 @@
         @update:value="store.selectPosition"
       />
 
+      <!-- 自动模式复选框 -->
       <div v-if="!store.isRunning && !store.isAutoRunning" style="display: flex; gap: 5px; align-items: center; justify-content: flex-end">
-        <n-checkbox v-model:checked="useAutoMode" size="small" style="font-size: 10px; transform: scale(0.9)" :disabled="store.allCompleted">
+        <n-checkbox v-model:checked="useAutoMode" size="small" style="font-size: 10px; transform: scale(0.9)">
           自动
         </n-checkbox>
         <n-tooltip trigger="hover">
@@ -67,6 +65,7 @@
 
       <div v-if="store.isLoadingData && !store.isRunning" class="loading-tip">加载数据中...</div>
 
+      <!-- 运行状态显示 -->
       <transition name="fade">
         <div class="right-running-status" v-if="store.isRunning">
           <n-progress
@@ -103,24 +102,21 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useMessage } from 'naive-ui'
 import { AlertCircleOutline } from '@vicons/ionicons5'
 import MarqueeText from '@/components/public/MarqueeText.vue'
-import { useJobByPositionStore } from '@/stores/spider/job_by_position'
+import { useReadBookStore } from '@/stores/spider/red_book'
 
 const message = useMessage()
-const store = useJobByPositionStore()
+const store = useReadBookStore()
 const useAutoMode = ref(false)
 
+// 开始爬取
 const handleStart = () => {
-  if (store.allCompleted) {
-    message.warning('所有职位均已完成，无需爬取')
-    return
-  }
-  const positionUid = store.selectedPositionUid
-  if (!useAutoMode.value && !positionUid) {
+  const position = store.selectedPosition
+  if (!useAutoMode.value && !position) {
     message.warning('请先选择一个职位或开启自动模式')
     return
   }
   store.startTask(
-    positionUid ? String(positionUid) : null,
+    position,
     useAutoMode.value,
     (msg, type = 'info') => {
       if (type === 'success') message.success(msg)
@@ -132,6 +128,7 @@ const handleStart = () => {
   )
 }
 
+// 暂停爬取
 const handleStop = () => {
   store.stopTask((msg, type = 'warning') => {
     if (type === 'warning') message.warning(msg)
@@ -139,12 +136,15 @@ const handleStop = () => {
   })
 }
 
+// 组件挂载时加载职位列表
 onMounted(() => {
-  store.fetchCountJobs().catch(() => {
-    message.error('加载数据失败')
+  const res = store.fetchMajorsList().catch(() => {
+    message.error('加载职位数据失败')
   })
+  console.log(res)
 })
 
+// 组件卸载时清理（可选）
 onBeforeUnmount(() => {
   store.dispose()
 })
@@ -165,15 +165,6 @@ onBeforeUnmount(() => {
 .search-spider-card.status-running {
   border-color: #2080f0;
   background-color: #f8fcff;
-}
-/* 🆕 全部完成状态样式 */
-.search-spider-card.status-completed {
-  border-color: #18a058 !important;
-  background-color: #f6ffed;
-  box-shadow: 0 4px 12px rgba(24, 160, 88, 0.2);
-}
-.search-spider-card.status-completed .search-spider-card-title {
-  color: #18a058;
 }
 .start-card-left {
   width: 90px;

@@ -230,6 +230,7 @@ class ModelMatcher:
             final_results[self.model_key_b][job_name] = round(score_b, 6)
 
         logger.info(f"✅ 完成 {len(pairs_data)} 个岗位匹配。")
+        print(final_results)
         return final_results
 
 

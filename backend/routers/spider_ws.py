@@ -1,4 +1,4 @@
-# backend/api/spider.py
+# backend/api/_disable_spider_core.py
 import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.controllers.spider_runtime_controller import SpiderRuntimeController

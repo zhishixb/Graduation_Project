@@ -1,11 +1,11 @@
-from pathlib import Path
 from typing import Optional, Dict, Any, Callable
 from loguru import logger
 
 # 引入核心组件
 from backend.services.spider.platforms.job_51.spider_major import SpiderMajor
 from backend.services.spider.platforms.job_51.spider_position import SpiderPosition
-from backend.services.spider.platforms.job_51.spider_run import SpiderRunner
+from backend.services.spider.platforms.spider_run import SpiderRunner
+from backend.services.spider.platforms.xhs.spider_red_book import SpiderRedBook
 from backend.websocket_manager import manager
 
 
@@ -42,6 +42,9 @@ class SpiderRuntimeController:
             elif spider_type == "position":
                 spider_instance = SpiderPosition(**kwargs)
                 self.spider_type = "position"
+            elif spider_type == "redbook":  # 新增
+                spider_instance = SpiderRedBook(**kwargs)
+                self.spider_type = "redbook"
             else:
                 logger.error(f"未知的爬虫类型: {spider_type}")
                 return False

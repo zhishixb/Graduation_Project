@@ -8,7 +8,9 @@
       <div class="job-spider-card">
         <JobSpiderByPositionCard></JobSpiderByPositionCard>
       </div>
-      <div class="job-spider-card"></div>
+      <div class="job-spider-card">
+        <RedBookSpider></RedBookSpider>
+      </div>
     </div>
     <div class="spider-bottom-container">
       <TrainingCountCard></TrainingCountCard>
@@ -21,6 +23,7 @@
 <script setup lang="ts">
 import JobSpiderByMajorCard from "@/components/graduation_project/spider/top_card/JobSpiderByMajorCard.vue";
 import JobSpiderByPositionCard from "@/components/graduation_project/spider/top_card/JobSpiderByPositionCard.vue";
+import RedBookSpider from "@/components/graduation_project/spider/top_card/RedBookSpider.vue";
 import TrainingCountCard from  "@/components/graduation_project/spider/bottom_card/TrainingCountCard.vue"
 
 </script>

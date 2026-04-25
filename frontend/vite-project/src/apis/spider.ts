@@ -8,6 +8,10 @@ export const getJobList = () => {
   return request.get('/spider/allJobs')
 }
 
+export const getMajorList = () => {
+  return request.get('/spider/allMajor')
+}
+
 export const getTrainingDataList = () => {
   return request.get('/spider/getTrainingDataCount')
 }

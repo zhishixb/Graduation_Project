@@ -1,9 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-// 请确保你的 API 路径正确
 import { getMajorsList } from "@/apis/spider";
 
-// --- 类型定义 ---
 interface MajorDetail { state: number; [key: string]: any }
 interface RawDataMap { [category: string]: { [secondary: string]: { [majorName: string]: MajorDetail } } }
 interface CascaderOption {
@@ -26,14 +24,12 @@ export const useSpiderStore = defineStore('spider', () => {
   const rawCascaderData = ref<RawDataMap | null>(null);
   const isLoadingData = ref(false);
 
-  // 运行状态
   const isRunning = ref(false);
   const isAutoRunning = ref(false);
   const currentMajor = ref<string | null>(null);
   const autoQueue = ref<string[]>([]);
   const stopRequested = ref(false);
 
-  // 进度与日志
   const progress = ref<ProgressState>({
     type: 0,
     currentJob: '--',
@@ -45,30 +41,23 @@ export const useSpiderStore = defineStore('spider', () => {
   const statusText = ref('等待选择...');
   const statusColor = ref('#969696');
 
-  // WebSocket 实例 (非响应式，避免序列化问题)
   let ws: WebSocket | null = null;
-  const AUTO_TASK_DELAY = 8000; // 8秒间隔
+  const AUTO_TASK_DELAY = 8000;
 
   // --- Getters ---
-
-  // 1. 计算进度百分比
   const percent = computed(() => {
     if (progress.value.targetCount === 0) return 0;
     return Math.min(100, Math.round((progress.value.currentCount / progress.value.targetCount) * 100));
   });
 
-  // 2. 构建级联选择器选项
   const cascaderOptions = computed<CascaderOption[]>(() => {
     if (!rawCascaderData.value) return [];
-
     const options: CascaderOption[] = [];
     try {
       Object.entries(rawCascaderData.value).forEach(([category, secondaries]) => {
         const categoryNode: CascaderOption = { label: category, value: category, children: [] };
-
         Object.entries(secondaries).forEach(([secondary, majors]) => {
           const secondaryNode: CascaderOption = { label: secondary, value: secondary, children: [] };
-
           Object.entries(majors).forEach(([majorName, detail]) => {
             const isDisabled = detail.state !== 1;
             secondaryNode.children!.push({
@@ -77,12 +66,10 @@ export const useSpiderStore = defineStore('spider', () => {
               disabled: isDisabled
             });
           });
-
           if (secondaryNode.children!.length > 0) {
             categoryNode.children!.push(secondaryNode);
           }
         });
-
         if (categoryNode.children!.length > 0) {
           options.push(categoryNode);
         }
@@ -93,7 +80,19 @@ export const useSpiderStore = defineStore('spider', () => {
     return options;
   });
 
-  // 3. 构建路径映射 (用于快速查找)
+  // 🆕 判断所有专业是否都被禁用（即没有 state === 1 的可用专业）
+  const allDisabled = computed(() => {
+    if (!rawCascaderData.value) return false;
+    for (const [, secondaries] of Object.entries(rawCascaderData.value)) {
+      for (const [, majors] of Object.entries(secondaries as any)) {
+        for (const detail of Object.values(majors as any)) {
+          if ((detail as any).state === 1) return false;
+        }
+      }
+    }
+    return true;
+  });
+
   const majorPathMap = computed<Map<string, MajorPathInfo>>(() => {
     const map = new Map<string, MajorPathInfo>();
     if (!rawCascaderData.value) return map;
@@ -108,7 +107,6 @@ export const useSpiderStore = defineStore('spider', () => {
   });
 
   // --- Actions ---
-
   function updateStatus(text: string, color: string) {
     statusText.value = text;
     statusColor.value = color;
@@ -127,7 +125,11 @@ export const useSpiderStore = defineStore('spider', () => {
       if (res?.success && res.data) {
         rawCascaderData.value = res.data;
         if (!isRunning.value) {
-          updateStatus('数据就绪，请选择专业', '#3eaf18');
+          if (allDisabled.value) {
+            updateStatus('全部专业已处理', '#52c41a');
+          } else {
+            updateStatus('数据就绪，请选择专业', '#3eaf18');
+          }
         }
       } else {
         throw new Error('数据格式错误');
@@ -216,9 +218,8 @@ export const useSpiderStore = defineStore('spider', () => {
       return;
     }
 
-    // 清理旧连接
     if (ws) {
-      ws.onclose = null; // 移除旧回调防止干扰
+      ws.onclose = null;
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close();
       }
@@ -227,7 +228,6 @@ export const useSpiderStore = defineStore('spider', () => {
 
     const taskId = `task_${Date.now()}`;
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // ⚠️ 请确认后端地址，建议放入 import.meta.env.VITE_WS_HOST
     const host = 'localhost:8090';
     const wsUrl = `${protocol}//${host}/ws/task/${taskId}`;
 
@@ -272,15 +272,15 @@ export const useSpiderStore = defineStore('spider', () => {
             };
 
             if (progress.value.type === 1) {
-              // 更新进度文本
               const txt = isAutoRunning.value
                 ? `[剩${autoQueue.value.length}] ${progress.value.currentJob} (${progress.value.currentCount}/${progress.value.targetCount})`
                 : `${progress.value.currentJob} (${progress.value.currentCount}/${progress.value.targetCount})`;
               updateStatus(txt, '#6c84ff');
             } else if (progress.value.type === 2) {
-              // ✅ 任务完成
               addLog(`[完成] ${majorName}`);
-              updateStatus('任务已完成', '#52c41a'); // 立即更新 UI 提示
+              updateStatus('任务已完成', '#52c41a');
+              // 完成一个专业后，重新拉取数据以更新禁用状态
+              fetchMajorData();
               if (isAutoRunning.value && !stopRequested.value) {
                 setTimeout(processNextInQueue, AUTO_TASK_DELAY);
               } else {
@@ -305,23 +305,17 @@ export const useSpiderStore = defineStore('spider', () => {
         }
       };
 
-      // ✅ 关键修复：防御性 onclose
       ws.onclose = () => {
         console.log('WS 连接关闭事件触发');
-        // 如果此时 isRunning 已经是 false，说明是正常结束（finishTask 中关闭的），直接忽略
         if (!isRunning.value) {
           console.log('-> 任务已结束，忽略 onclose');
           return;
         }
-
-        // 如果 isRunning 还是 true，说明是意外断开
         console.warn('-> 任务运行中连接意外断开');
         addLog('[异常] 连接意外断开');
-
         if (isAutoRunning.value) {
           setTimeout(processNextInQueue, 2000);
         } else {
-          // 手动模式下，意外断开视为停止
           stopTask();
         }
       };
@@ -348,27 +342,20 @@ export const useSpiderStore = defineStore('spider', () => {
     addLog('正在停止');
   }
 
-
-
   function finishTask() {
     console.log('🏁 执行手动任务完成清理');
     isRunning.value = false;
     isAutoRunning.value = false;
     currentMajor.value = null;
     stopRequested.value = false;
-
     progress.value = { type: 0, currentJob: '--', currentPage: 0, currentCount: 0, targetCount: 0 };
+    logs.value = [];
 
-    logs.value = []
-
-    // 安全关闭 WS
     if (ws) {
-      ws.onclose = null; // 防止 onclose 再次触发逻辑
+      ws.onclose = null;
       ws.close();
       ws = null;
     }
-
-    // 刷新数据以更新专业状态
     fetchMajorData();
   }
 
@@ -378,9 +365,7 @@ export const useSpiderStore = defineStore('spider', () => {
     isRunning.value = false;
     currentMajor.value = null;
     autoQueue.value = [];
-
     progress.value = { type: 0, currentJob: '--', currentPage: 0, currentCount: 0, targetCount: 0 };
-
     updateStatus('🎉 全部完成', '#52c41a');
     addLog('所有自动任务完成');
 
@@ -389,7 +374,6 @@ export const useSpiderStore = defineStore('spider', () => {
       ws.close();
       ws = null;
     }
-
     fetchMajorData();
   }
 
@@ -403,9 +387,7 @@ export const useSpiderStore = defineStore('spider', () => {
     isAutoRunning.value = false;
   }
 
-  // --- Return ---
   return {
-    // State
     rawCascaderData,
     isLoadingData,
     isRunning,
@@ -416,16 +398,11 @@ export const useSpiderStore = defineStore('spider', () => {
     logs,
     statusText,
     statusColor,
-
-    // Getters (必须导出)
-    percent,
     cascaderOptions,
+    allDisabled,          // 🆕 导出判断是否全部禁用
+    percent,
     getMajorPath,
-
-    // Setters
     addLog,
-
-    // Actions
     fetchMajorData,
     startTask,
     stopTask,

@@ -33,10 +33,31 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "GE-Small-ZH 微调版，batch=512"
     },
 
-    # --- 实际参数下-lora微调-bge-small-256 ---
+    # --- 实际参数下-lora微调-bge-small-256-3 ---
     "bge_small_lora-256-3": {
         "base": "models/bge_small/bge-small-zh-v1.5",
         "lora": "models/bge_small/bge-small-lora-256-3",
+        "description": "GE-Small-ZH 微调版，batch=256"
+    },
+
+    # --- 实际参数下-lora微调-bge-small-256-5 ---
+    "bge_small_lora-256-5": {
+        "base": "models/bge_small/bge-small-zh-v1.5",
+        "lora": "models/bge_small/bge-small-lora-256-5",
+        "description": "GE-Small-ZH 微调版，batch=256"
+    },
+
+    # --- 实际参数下-lora微调-bge-small-256-10 ---
+    "bge_small_lora-256-10": {
+        "base": "models/bge_small/bge-small-zh-v1.5",
+        "lora": "models/bge_small/bge-small-lora-256-10",
+        "description": "GE-Small-ZH 微调版，batch=256"
+    },
+
+    # --- 实际参数下-lora微调-bge-small-256-10 ---
+    "bge_small_lora-256-20": {
+        "base": "models/bge_small/bge-small-zh-v1.5",
+        "lora": "models/bge_small/bge-small-lora-256-20",
         "description": "GE-Small-ZH 微调版，batch=256"
     },
 
@@ -63,9 +84,21 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
     },
 
     "bge_m3_lora-256-3": {
-        "base": "models/models/bge-m3",
+        "base": "models/bge_m3/bge-m3",
         "lora": "models/bge_m3/bge-m3-lora-256-3",
         "description": "GE-Small-ZH 微调版，batch=256，Epoch=3"
+    },
+
+    "bge_m3_lora-256-10": {
+        "base": "models/bge_m3/bge-m3",
+        "lora": "models/bge_m3/bge-m3-lora-256-10",
+        "description": "GE-Small-ZH 微调版，batch=256，Epoch=10"
+    },
+
+    "bge_m3_lora-256-20": {
+        "base": "models/bge_m3/bge-m3",
+        "lora": "models/bge_m3/bge-m3-lora-256-20",
+        "description": "GE-Small-ZH 微调版，batch=256，Epoch=20"
     },
 
 

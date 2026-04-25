@@ -1,15 +1,20 @@
 <template>
-  <div class="search-spider-card" :class="`status-${store.isLoadingData ? 'loading' : 'idle'}`" id="spider-major-51job-card-container">
-    <!-- 左侧：标题与状态 -->
+  <div
+    class="search-spider-card"
+    :class="[
+      `status-${store.isLoadingData ? 'loading' : 'idle'}`,
+      { 'status-completed': store.allDisabled }
+    ]"
+    id="spider-major-51job-card-container"
+  >
+    <!-- 左侧内容不变 -->
     <div class="start-card-left">
       <div class="search-spider-card-title">
         {{ store.isAutoRunning ? '自动批量爬取' : '51Job专业爬取' }}
       </div>
-
       <div class="search-spider-card-state">
         <MarqueeText :text="store.statusText" :speed="3.5" :color="store.statusColor" />
       </div>
-
       <div style="height: 30px">
         <transition name="fade">
           <div v-show="store.logs.length > 0" class="signal-log-area">
@@ -17,7 +22,6 @@
           </div>
         </transition>
       </div>
-
       <div class="start-card-info-placeholder">
         <n-button
           strong
@@ -32,17 +36,16 @@
       </div>
     </div>
 
-    <!-- 右侧：选择器与控制区 -->
     <div class="start-card-right">
-      <!-- 级联选择器 -->
       <n-cascader
+        v-if="!store.isRunning && !store.isAutoRunning"
         v-model:value="selectedMajorName"
         v-model:show="cascaderShow"
-        :options="cascaderOptions"
+        :options="store.cascaderOptions"
         placeholder="选专业"
         size="small"
         clearable
-        :disabled="store.isLoadingData || store.isRunning || store.isAutoRunning"
+        :disabled="store.isLoadingData || store.isRunning || store.isAutoRunning || store.allDisabled"
         :filterable="true"
         :show-path="true"
         :emit-path="false"
@@ -51,12 +54,10 @@
         placement="bottom-end"
         strategy="fixed"
         @update:value="handleMajorChange"
-        v-if="!store.isRunning && !store.isAutoRunning"
       />
 
-      <!-- 自动化 Checkbox -->
       <div v-if="!store.isRunning && !store.isAutoRunning" style="display: flex; gap: 5px; align-items: center;">
-         <n-checkbox v-model:checked="useAutoMode" size="small" style="font-size: 10px; transform: scale(0.9)">自动</n-checkbox>
+         <n-checkbox v-model:checked="useAutoMode" size="small" style="font-size: 10px; transform: scale(0.9)" :disabled="store.allDisabled">自动</n-checkbox>
          <n-tooltip trigger="hover">
             <template #trigger>
               <div style="font-size: 16px; color: #999; cursor: help; line-height: 0;">
@@ -69,7 +70,6 @@
 
       <div v-if="store.isLoadingData && !store.isAutoRunning" class="loading-tip">加载数据中...</div>
 
-      <!-- 运行状态 -->
       <transition name="fade">
         <div class="right-running-status" v-if="store.isRunning">
           <n-progress
@@ -105,41 +105,32 @@ import { AlertCircleOutline } from "@vicons/ionicons5";
 const store = useSpiderStore();
 const selectedMajorName = ref<string | null>(null);
 const useAutoMode = ref(false);
-
-// ✅ 新增：控制级联选择器的显示/隐藏
 const cascaderShow = ref(false);
 
 const cascaderOptions = computed(() => store.cascaderOptions);
 
 const handleMajorChange = (val: string | null) => {
   selectedMajorName.value = val;
-
   if (val) {
     const path = store.getMajorPath(val);
     if (path) {
       store.statusText = `目标：${path.category} - ${path.secondary} - ${val}`;
       store.statusColor = '#6cb1ff';
       store.addLog(`已锁定：${val}`);
-
-      // ✅ 关键：选中后，延迟关闭下拉菜单
-      // 使用 nextTick 或 setTimeout 确保 UI 先渲染选中的值，再关闭
       setTimeout(() => {
         cascaderShow.value = false;
       }, 150);
     }
   } else {
-    // 如果清空了值
     if (!store.isRunning) {
       store.statusText = '等待选择...';
       store.statusColor = '#969696';
     }
-    // 清空时也关闭菜单
     cascaderShow.value = false;
   }
 };
 
 const handleStartClick = () => {
-  // 点击开始时，如果菜单还开着，先关掉
   cascaderShow.value = false;
   store.startTask(selectedMajorName.value, useAutoMode.value);
 };
@@ -150,6 +141,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 样式与之前相同，新增 status-completed 类 */
 .search-spider-card {
   width: 230px;
   height: 150px;
@@ -160,85 +152,53 @@ onMounted(() => {
   box-sizing: border-box;
   position: relative;
   transition: all 0.3s ease;
-  border: 1px solid #f0a020; /* 橙色边框 */
+  border: 1px solid #f0a020;
   z-index: 100;
   background-color: #fefefe;
 }
 
+.search-spider-card.status-completed {
+  border-color: #18a058 !important;
+  background-color: #f6ffed;
+  box-shadow: 0 4px 12px rgba(24, 160, 88, 0.2);
+}
+.search-spider-card.status-completed .search-spider-card-title {
+  color: #18a058;
+}
 
+/* 其他状态样式保持不变 */
 .search-spider-card.status-loading {
   border-color: #2080f0;
 }
-
 .search-spider-card.status-error {
   border-color: #d03050;
 }
-
 .search-spider-card.status-success {
   border-color: #18a058;
 }
-
 .search-spider-card.status-warning {
   border-color: #f0a020;
 }
-
 .search-spider-card.status-idle {
   border-color: #e0e0e0;
 }
 
-
-.start-card-left {
-  width: 90px;
-  height: 120px;
-  display: flex;
-  flex-direction: column;
-  padding: 15px;
-}
-.start-card-right {
-  width: 110px;
-  height: 100%;
-  display: flex;
-  padding: 10px;
-  gap: 20px;
-  flex-direction: column;
-  justify-content: center;
-  position: relative;
-  z-index: 20;
-}
-
-.search-spider-card-title {
-  font-size: 11px;
-  color: #999999;
-  margin-bottom: 10px;
-}
-
+/* 其余样式保持原样 */
+.start-card-left { width: 90px; height: 120px; display: flex; flex-direction: column; padding: 15px; }
+.start-card-right { width: 110px; height: 100%; display: flex; padding: 10px; gap: 20px; flex-direction: column; justify-content: center; position: relative; z-index: 20; }
+.search-spider-card-title { font-size: 11px; color: #999999; margin-bottom: 10px; }
 .search-spider-card-state { height: 25px; margin-bottom: 9px; }
-.signal-log-area {
-  height: 20px; display: flex; align-items: center; justify-content: center;
-  background: #f0faff; border: 1px solid #d6e4ff; border-radius: 4px;
-  overflow: hidden; animation: slideIn 0.3s ease-out;
-}
-.log-entry {
-  font-size: 10px; color: #6cb1ff; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; padding: 0 6px;
-  width: 100%; text-align: center; font-weight: 500;
-}
+.signal-log-area { height: 20px; display: flex; align-items: center; justify-content: center; background: #f0faff; border: 1px solid #d6e4ff; border-radius: 4px; overflow: hidden; animation: slideIn 0.3s ease-out; }
+.log-entry { font-size: 10px; color: #6cb1ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; width: 100%; text-align: center; font-weight: 500; }
 .start-card-info-placeholder { height: 24px; display: flex; align-items: center; }
 .loading-tip { font-size: 9px; color: #999; text-align: center; margin-top: 15px; }
 .right-running-status { display: flex; gap: 5px; flex-direction: column; justify-content: center; align-items: center; }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-5px); }
 @keyframes slideIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
 :deep(.n-cascader) { width: 100%; }
-:deep(.n-cascader__trigger) {
-  height: 30px !important; font-size: 11px !important; border-radius: 6px !important;
-  background-color: #f9f9f9; border: 1px solid #e0e0e0; transition: all 0.2s;
-}
+:deep(.n-cascader__trigger) { height: 30px !important; font-size: 11px !important; border-radius: 6px !important; background-color: #f9f9f9; border: 1px solid #e0e0e0; transition: all 0.2s; }
 :deep(.n-cascader__trigger:hover) { background-color: #f0f0f0; border-color: #6cb1ff; }
 :deep(.n-cascader__label) { padding-left: 6px; color: #333; }
-:deep(.n-cascader-menu) {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border-radius: 6px !important;
-  border: 1px solid #eee !important; font-size: 12px;
-}
+:deep(.n-cascader-menu) { box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border-radius: 6px !important; border: 1px solid #eee !important; font-size: 12px; }
 </style>

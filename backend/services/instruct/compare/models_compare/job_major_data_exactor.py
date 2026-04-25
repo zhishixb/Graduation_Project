@@ -32,11 +32,10 @@ class JobMajorDataExactor:
 
     def get_cleaned_requirements_by_functions(self, function_list: List[str]) -> List[Dict[str, str]]:
         """
-        根据职能列表获取描述，清洗后，【关键修改】：将每个职能的所有要求合并为一段完整文本。
+        根据职能列表获取描述，清洗后，将每个职能的所有要求合并为一段完整文本。
 
         :param function_list: 职能名称列表
         :return: 列表，元素为字典：{'function': '职能名', 'requirement': '合并后的完整要求文本'}
-                 长度将与 function_list 保持一致（或等于数据库中找到的职能数量）。
         """
         raw_data_with_func = self.get_job_descriptions_with_function(function_list)
 
@@ -44,44 +43,35 @@ class JobMajorDataExactor:
             print(f"警告：未从数据库中找到职能 {function_list} 的任何数据。")
             return []
 
-        all_cleaned_requirements = []
-
-        # 用于去重或聚合：{ "职能名": ["要求1", "要求2", ...] }
-        func_requirements_map: Dict[str, List[str]] = {}
+        # 改为存储字符串，而不是列表
+        func_requirements_map: Dict[str, str] = {}
 
         print(f"开始清洗 {len(raw_data_with_func)} 条职位描述...")
 
-        for i, item in enumerate(raw_data_with_func):
+        for item in raw_data_with_func:
             func_name = item['function']
             desc_text = item['job_description']
 
-            # 获取该条描述的所有要求列表 (例如: ['要求A', '要求B', ...])
+            # 提取并清洗，直接得到一个完整的字符串
             raw_sections = self.extractor.extract(desc_text)
-            reqs_list = self.cleaner.process_sections(raw_sections)
+            reqs_str = self.cleaner.process_sections(raw_sections)  # 这里返回的是字符串
 
-            # 初始化列表如果不存在
+            if not reqs_str:
+                continue  # 如果字符串为空，跳过
+
             if func_name not in func_requirements_map:
-                func_requirements_map[func_name] = []
+                func_requirements_map[func_name] = reqs_str
+            else:
+                # 将多个来源的要求用换行符拼接，形成完整段落
+                func_requirements_map[func_name] += "\n" + reqs_str
 
-            # 将提取出的要求加入该职能的列表
-            func_requirements_map[func_name].extend(reqs_list)
-
-        # 【关键修改】：将列表合并为字符串，确保每个职能只输出一条记录
-        for func_name, req_list in func_requirements_map.items():
-            if not req_list:
-                continue
-
-            # 使用换行符将所有要求拼接成一个大字符串
-            # 例如: "要求1\n要求2\n要求3..."
-            merged_text = "\n".join(req_list)
-
-            all_cleaned_requirements.append({
-                "function": func_name,
-                "requirement": merged_text  # 👈 这里是合并后的长字符串，而不是单条要求
-            })
+        # 构建最终结果，requirement 字段现在是字符串
+        all_cleaned_requirements = [
+            {"function": func_name, "requirement": req_str}
+            for func_name, req_str in func_requirements_map.items()
+        ]
 
         print(f"✅ 清洗完成：输入 {len(function_list)} 个职能，输出 {len(all_cleaned_requirements)} 条合并后的文本。")
-
         return all_cleaned_requirements
 
     def get_job_descriptions_with_function(self, function_list: List[str]) -> List[Dict[str, Any]]:

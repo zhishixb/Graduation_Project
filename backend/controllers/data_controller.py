@@ -7,6 +7,7 @@ from backend.services.process.count.position_data_count import PositionDataRecor
 from backend.services.process.count.training_data_count import TrainingDataRecorder
 from backend.services.spider.platforms.job_51.private.major_spider.major_dictionary import MajorDictionary
 from backend.services.spider.platforms.job_51.private.position_spider.job_dictionary import JobDictionary
+from backend.services.spider.platforms.xhs.majors_processor import MajorsProcessor
 
 
 class JobDictController:
@@ -18,7 +19,7 @@ class JobDictController:
 
     def get_full_major_dictionary(self) -> Dict[str, Any]:
         """
-        获取完整的职位层级字典数据。
+        获取完整的专业层级字典数据。
 
         :return: 包含数据的字典，格式为 {"success": True, "data": {...}} 或错误信息
         """
@@ -76,6 +77,35 @@ class JobDictController:
                 "success": False,
                 "data": None,
                 "message": f"服务器内部错误: {str(e)}"
+            }
+
+
+class MajorDataController:
+    """专业数据控制器，提供 majors 表的数据查询接口"""
+
+    def get_full_major_list(self):
+        """
+        获取全部专业的处理状态列表
+        :return: 标准响应字典，包含 success、data、message
+        """
+        try:
+            # 定位项目根目录下的数据库文件
+            project_root = Path(__file__).resolve().parent.parent
+            db_path = project_root / 'data' / 'db' / 'majors.db'  # 注意应为 majors.db
+
+            processor = MajorsProcessor(db_path)
+            json_data = processor.get_all_status_as_json()  # 调用方法，不是属性
+
+            return {
+                "success": True,
+                "data": json_data,
+                "message": "获取成功"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "data": None,
+                "message": f"获取专业列表失败: {str(e)}"
             }
 
 

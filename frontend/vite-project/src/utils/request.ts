@@ -4,7 +4,7 @@ import axios from 'axios';
 // 创建 Axios 实例
 const http = axios.create({
   baseURL: '/api',   // 建议以 / 开头，避免路径拼接问题
-  timeout: 10000,    // 10 秒超时
+  timeout: 20000,    // 10 秒超时
 });
 
 // 统一请求函数（内部使用）

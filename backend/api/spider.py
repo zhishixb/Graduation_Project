@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from backend.controllers.job_dict_controller import JobDictController, SpiderDataCountController
+from backend.controllers.data_controller import JobDictController, SpiderDataCountController, MajorDataController
 
 router = APIRouter(prefix="/spider", tags=["爬虫功能"])
 
@@ -41,6 +41,11 @@ async def get_all_jobs():
     else:
         # 如果控制器返回失败，抛出 HTTP 500 或 400
         raise HTTPException(status_code=500, detail=result["message"])
+
+@router.get("/allMajor")
+async def get_all_Majors():
+    controller = MajorDataController()
+    return controller.get_full_major_list()
 
 @router.get("/getTrainingDataCount")
 async def get_training_data_count():
