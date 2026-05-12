@@ -52,8 +52,8 @@ export const useReadBookStore = defineStore('readBook', () => {
 
   // WebSocket 实例
   let ws: WebSocket | null = null
-  const AUTO_TASK_DELAY = 120000      // 每个专业完成后默认等待时间（毫秒）
-  const EXTRA_PAUSE_AFTER_ROUND = 120000  // 每完成3个专业后额外暂停时间（毫秒）
+  const AUTO_TASK_DELAY = 180000      // 每个专业完成后默认等待时间（毫秒）
+  const EXTRA_PAUSE_AFTER_ROUND = 180000  // 每完成3个专业后额外暂停时间（毫秒）
   let stopRequested = false
 
   // 自动模式计数器（记录已成功完成的专业数量）

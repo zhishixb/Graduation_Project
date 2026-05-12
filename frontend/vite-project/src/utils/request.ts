@@ -3,11 +3,11 @@ import axios from 'axios';
 
 // 创建 Axios 实例
 const http = axios.create({
-  baseURL: '/api',   // 建议以 / 开头，避免路径拼接问题
-  timeout: 20000,    // 10 秒超时
+  baseURL: '/api',
+  timeout: 600000,
 });
 
-// 统一请求函数（内部使用）
+// 统一请求函数
 async function request<T = any>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   url: string,
@@ -19,7 +19,7 @@ async function request<T = any>(
       url,
       ...config,
     });
-    return response.data; // 直接返回业务数据
+    return response.data;
   } catch (error: any) {
     // 统一错误提示（使用 Naive UI message）
     const msg = error.response?.data?.message || '请求失败，请稍后再试'
@@ -28,7 +28,6 @@ async function request<T = any>(
   }
 }
 
-// 导出常用方法
 export default {
   get<T = any>(url: string, params?: Record<string, any>): Promise<T> {
     return request('GET', url, { params });

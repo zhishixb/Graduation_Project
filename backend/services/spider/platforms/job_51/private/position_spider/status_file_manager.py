@@ -17,9 +17,3 @@ class FlagFile:
         if val not in (0, 1):
             raise ValueError("文件内容不是0或1")
         return val
-
-
-# 使用
-flag = FlagFile(Path("./flag.txt"))
-flag.write(1)
-print(flag.read())  # 输出: 1

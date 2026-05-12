@@ -117,9 +117,9 @@ class SpiderRedBook:
                     if self._stop_requested:
                         break
 
-                    if stock > 1000 and start_type == 0:
+                    if stock > 2000 and start_type == 0:
                         start_type = 1
-                    elif stock > 2000 and start_type == 1:
+                    elif stock > 4000 and start_type == 1:
                         self.majors_processor.mark_processed_by_name(self.major, start_type)
                         return
 
@@ -147,6 +147,11 @@ class SpiderRedBook:
                         self.logger.error(f"[{self.major}] 采集笔记评论失败 {note_url}: {e}")
                         continue
 
+                    if not comments_raw:
+                        self.majors_processor.mark_processed_by_name(self.major, start_type)
+                        self.logger.info(f"进入无评论帖子，退出爬虫")
+                        return
+
                     # 解析并入库
                     flat_comments = self.comments_parser.parse(comments_raw, note_id)
                     inserted = self.database_manager.save_comments(flat_comments, self.major)
@@ -156,7 +161,7 @@ class SpiderRedBook:
 
                     count+=1
 
-                    time.sleep(45)
+                    time.sleep(60)
 
                 # 5. 标记本轮完成
                 if count >= 20:

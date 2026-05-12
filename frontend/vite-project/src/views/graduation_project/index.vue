@@ -1,6 +1,6 @@
 <template>
   <div class="graduation-project-container">
-    <SideMenu></SideMenu>
+    <!-- <SideMenu></SideMenu> -->
 
     <div class="graduation-project-child-page">
       <!-- 1. RouterView 改为使用 v-slot -->
@@ -32,8 +32,8 @@ import SideMenu from "@/components/graduation_project/menu/SideMenu.vue";
 }
 
 .graduation-project-child-page {
-  width: 980px;
-  height: 560px;
+  width: 1220px;
+  height: 680px;
   border-radius: 8px;
 }
 

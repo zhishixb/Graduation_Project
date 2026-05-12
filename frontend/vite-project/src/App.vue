@@ -25,8 +25,8 @@ import { NMessageProvider } from 'naive-ui'
 }
 
 .fixed-content-wrapper {
-  width: 1110px;
-  height: 600px;
+  width: 1260px;
+  height: 720px;
   flex-shrink: 0;
   flex-grow: 0; /* 也不要让它自动变大 */
   background-color: #ffffff;

@@ -4,6 +4,7 @@ import GraduationProject from '@/views/graduation_project/index.vue'
 import Spider from  '@/views/graduation_project/pages/Spider.vue'
 import Process from "@/views/graduation_project/pages/Process.vue";
 import Achieve from "@/views/graduation_project/pages/Achieve.vue";
+import TestPage from "@/views/graduation_project/pages/Test.vue";
 
 import Test from "@/views/Test/Test.vue";
 
@@ -40,6 +41,15 @@ export const routes: RouteRecordRaw[] = [
                 path: 'achieve',
                 name: 'Achieve',
                 component: Achieve,
+                meta: {
+                    title: '结果展示',
+                    requireAuth: false
+                }
+            },
+            {
+                path: 'test',
+                name: 'TestPage',
+                component: TestPage,
                 meta: {
                     title: '结果展示',
                     requireAuth: false

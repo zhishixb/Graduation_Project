@@ -71,7 +71,7 @@ class JobMajorDataExactor:
             for func_name, req_str in func_requirements_map.items()
         ]
 
-        print(f"✅ 清洗完成：输入 {len(function_list)} 个职能，输出 {len(all_cleaned_requirements)} 条合并后的文本。")
+        print(f"清洗完成：输入 {len(function_list)} 个职能，输出 {len(all_cleaned_requirements)} 条合并后的文本。")
         return all_cleaned_requirements
 
     def get_job_descriptions_with_function(self, function_list: List[str]) -> List[Dict[str, Any]]:

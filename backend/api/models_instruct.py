@@ -19,12 +19,8 @@ class ModelCompareRequest(BaseModel):
 async def get_model_list():
     """获取可用模型列表"""
     controller = ModelsInstructorController()
-    data = controller.get_models_list()
-    return {
-        "success": True,
-        "data": data,
-        "message": "获取成功"
-    }
+    res = controller.get_models_list()
+    return res
 
 
 @router.post("/modelCompare", summary="双模型匹配度对比")
@@ -47,11 +43,7 @@ async def compare_models(request: ModelCompareRequest):
             jobs=request.jobs
         )
 
-        return {
-            "success": True,
-            "data": res,
-            "message": "对比完成"
-        }
+        return res
 
     except ValueError as e:
         # 处理模型不存在、参数校验失败等逻辑错误 (400)

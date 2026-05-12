@@ -143,11 +143,11 @@ class XHSSpiderCore:
                 items = self._process_search_response(new_packet, i+2)
                 all_items.extend(items)
             else:
-                print("      ⚠️ 未捕获到新响应，跳过本次滚动")
+                print("⚠️ 未捕获到新响应，跳过本次滚动")
 
         self.page.listen.stop()
         notes = self._extract_note_info(all_items)[:self.target_note_count]
-        print(f"   ✅ 搜索完成，共获取 {len(notes)} 条笔记")
+        print(f"✅ 搜索完成，共获取 {len(notes)} 条笔记")
         return notes
 
     # ==================== 评论采集相关 ====================
