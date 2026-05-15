@@ -124,7 +124,7 @@
       </div>
     </div>
 
-    <!-- 地图动画区域（仅在地图模式时显示） -->
+    <!-- 地图动画区域 -->
     <div
       v-show="activeView === 'map'"
       class="map-stage"
@@ -191,7 +191,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { NTooltip, NButton, NDrawer, NDrawerContent } from 'naive-ui'
+import { NTooltip, NButton, NDrawer, NDrawerContent, useMessage } from 'naive-ui'
 import { InformationCircleOutline } from '@vicons/ionicons5'
 import Map from '@/components/graduation_project/achieve/animated/Diagram.vue'
 import JobInfoPanel from '@/components/graduation_project/achieve/page/job_detail/JobInfoPanel.vue'
@@ -213,6 +213,7 @@ import {
 
 const store = useDataStore()
 const businessStore = useBusinessStore()
+const message = useMessage()
 
 type ViewMode = 'map' | 'keywords' | 'radar'
 
@@ -240,6 +241,9 @@ const domainRadarData = ref<any[]>([])
 // 高精度匹配数据及显示状态
 const aggregatedScore = ref<{ max: number; mean: number; median: number } | null>(null)
 const showPrecision = ref(false)
+
+// 标记大数据是否已开始加载（用于提示）
+const heavyDataLoading = ref(false)
 
 const stageClass = computed(() => {
   if (stage.value === 'moved') return 'scaled moved'
@@ -284,14 +288,12 @@ const averageValue = computed<number | null>(() => {
   return typeof avg === 'number' ? avg : (avg.similarity ?? null)
 })
 
-// 关键词热力图当前数据
 const currentSemanticPairs = computed(() => {
   if (heatmapList.value.length === 0) return []
   const item = heatmapList.value[heatmapIndex.value]
   return item?.semantic_pairs || []
 })
 
-// 全词元热力图当前抽屉内展示的数据
 const currentFullTokenPair = computed(() => {
   if (fullTokenHeatmapList.value.length === 0) return []
   return fullTokenHeatmapList.value[fullTokenIndex.value] || []
@@ -301,7 +303,17 @@ const setView = (mode: ViewMode) => {
   activeView.value = mode
 }
 
+// 检查关键词热力图数据是否就绪，未就绪则提示
 const toggleKeywordsHeatmap = () => {
+  if (heatmapList.value.length === 0) {
+    if (heavyDataLoading.value) {
+      message.warning('数据仍在加载中，请稍后重试')
+    } else {
+      message.warning('暂无关键词数据')
+    }
+    return
+  }
+
   if (activeView.value === 'keywords') {
     const total = heatmapList.value.length
     if (total <= 1) {
@@ -315,7 +327,17 @@ const toggleKeywordsHeatmap = () => {
   }
 }
 
+// 检查雷达图数据是否就绪
 const toggleRadar = () => {
+  if (domainRadarData.value.length === 0) {
+    if (heavyDataLoading.value) {
+      message.warning('数据仍在加载中，请稍后重试')
+    } else {
+      message.warning('暂无领域雷达数据')
+    }
+    return
+  }
+
   if (activeView.value === 'radar') {
     setView('map')
   } else {
@@ -323,7 +345,16 @@ const toggleRadar = () => {
   }
 }
 
+// 打开全词元抽屉前检查数据
 const openFullTokensDrawer = () => {
+  if (fullTokenHeatmapList.value.length === 0) {
+    if (heavyDataLoading.value) {
+      message.warning('数据仍在加载中，请稍后重试')
+    } else {
+      message.warning('暂无全词元数据')
+    }
+    return
+  }
   fullTokenIndex.value = 0
   showFullTokenDrawer.value = true
 }
@@ -340,8 +371,77 @@ const nextFullTokenGroup = () => {
   }
 }
 
+// 检查高精度匹配数据是否就绪
 const togglePrecision = () => {
+  if (!aggregatedScore.value) {
+    if (heavyDataLoading.value) {
+      message.warning('数据仍在加载中，请稍后重试')
+    } else {
+      message.warning('暂无高精度匹配数据')
+    }
+    return
+  }
   showPrecision.value = !showPrecision.value
+}
+
+// 加载重量级数据（不阻塞主流程）
+const loadHeavyData = async (major: string, function_name: string) => {
+  heavyDataLoading.value = true
+  try {
+    // 并行请求以提高速度
+    const [res_6, res_7, res_8] = await Promise.all([
+      explainMatching(major, function_name, 8, 5),
+      getDomainMatching(major, function_name),
+      getMajorJobAggregatedScore(major, function_name)
+    ])
+
+    console.log(res_6)
+
+    // 处理关键词/全词元数据
+    if (res_6.success && Array.isArray(res_6.data?.explanations)) {
+      heatmapList.value = res_6.data.explanations
+      const allFullTokens: any[][] = []
+      for (const exp of res_6.data.explanations) {
+        if (exp.echarts_json) {
+          try {
+            const raw = typeof exp.echarts_json === 'string'
+              ? JSON.parse(exp.echarts_json)
+              : exp.echarts_json
+            allFullTokens.push(businessStore.transformToSemanticPairs(raw))
+          } catch (e) {
+            console.warn('转换某组全词元数据失败', e)
+            allFullTokens.push([])
+          }
+        } else {
+          allFullTokens.push([])
+        }
+      }
+      fullTokenHeatmapList.value = allFullTokens
+    } else {
+      heatmapList.value = []
+      fullTokenHeatmapList.value = []
+    }
+
+    // 处理雷达图数据
+    if (res_7.success && Array.isArray(res_7.data?.domains)) {
+      domainRadarData.value = res_7.data.domains
+    } else {
+      domainRadarData.value = []
+    }
+
+    // 处理高精度聚合分数
+    if (res_8.success && res_8.data) {
+      aggregatedScore.value = {
+        max: res_8.data.max,
+        mean: res_8.data.mean,
+        median: res_8.data.median
+      }
+    }
+  } catch (e) {
+    console.error('加载高级分析数据失败:', e)
+  } finally {
+    heavyDataLoading.value = false
+  }
 }
 
 onMounted(async () => {
@@ -370,51 +470,16 @@ onMounted(async () => {
   const res_5 = await matchMajorJob(major, function_name)
   averageScore.value = res_5.data
 
-  const res_6 = await explainMatching(major, function_name, 8, 5)
-  if (res_6.success && Array.isArray(res_6.data?.explanations)) {
-    heatmapList.value = res_6.data.explanations
-    const allFullTokens: any[][] = []
-    for (const exp of res_6.data.explanations) {
-      if (exp.echarts_json) {
-        try {
-          const raw = typeof exp.echarts_json === 'string'
-            ? JSON.parse(exp.echarts_json)
-            : exp.echarts_json
-          allFullTokens.push(businessStore.transformToSemanticPairs(raw))
-        } catch (e) {
-          console.warn('转换某组全词元数据失败', e)
-          allFullTokens.push([])
-        }
-      } else {
-        allFullTokens.push([])
-      }
-    }
-    fullTokenHeatmapList.value = allFullTokens
-  } else {
-    heatmapList.value = []
-    fullTokenHeatmapList.value = []
-  }
-
-  const res_7 = await getDomainMatching(major, function_name)
-  if (res_7.success && Array.isArray(res_7.data?.domains)) {
-    domainRadarData.value = res_7.data.domains
-  }
-
-  const res_8 = await getMajorJobAggregatedScore(major, function_name)
-  if (res_8.success && res_8.data) {
-    aggregatedScore.value = {
-      max: res_8.data.max,
-      mean: res_8.data.mean,
-      median: res_8.data.median
-    }
-  }
-
+  // 基础数据加载完成，解除 loading 并启动地图动画
   setTimeout(() => store.isLoading = false, 400)
   setTimeout(() => {
     requestAnimationFrame(() => {
       stage.value = 'scaled'
     })
   }, 400 + 800)
+
+  // 在基础内容渲染后立即开始加载重量级数据
+  loadHeavyData(major, function_name)
 })
 </script>
 

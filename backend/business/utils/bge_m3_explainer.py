@@ -96,7 +96,7 @@ class BGE_M3_Explainer:
         """
         out = self.flag_model.encode([text_a, text_b], return_dense=False,
                                      return_sparse=True, return_colbert_vecs=True,
-                                     batch_size=2, max_length=512)
+                                     batch_size=2, max_length=256)
 
         # --- 1. 词法权重贡献 ---
         sw_a = filter_stopwords(self._id_to_text_map(out['lexical_weights'][0]))
@@ -195,7 +195,7 @@ class BGE_M3_Explainer:
             return_sparse=False,
             return_colbert_vecs=True,
             batch_size=2,
-            max_length=512
+            max_length=256
         )
         vecs_a = out['colbert_vecs'][0]  # [L1, D]
         vecs_b = out['colbert_vecs'][1]  # [L2, D]
@@ -235,7 +235,7 @@ class BGE_M3_Explainer:
             return_sparse=False,
             return_colbert_vecs=True,
             batch_size=min(len(all_texts), 16),  # 根据显存调整
-            max_length=512
+            max_length=256
         )
 
         # 专业描述的 ColBERT vectors，形状 [L_pro, D]

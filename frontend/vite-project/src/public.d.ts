@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     Bubble: typeof import('./components/graduation_project/achieve/page/dash_board/Bubble.vue')['default']
     BubbleMarker: typeof import('./components/graduation_project/achieve/page/dash_board/BubbleMarker.vue')['default']
+    CommunityRecognition: typeof import('./components/graduation_project/achieve/page/major_detail/CommunityRecognition.vue')['default']
     CompareCard: typeof import('./components/graduation_project/achieve/page/dash_board/CompareCard.vue')['default']
     ComparePage: typeof import('./components/graduation_project/achieve/content/ComparePage.vue')['default']
     ControlCard: typeof import('./components/graduation_project/process/left_card/ControlCard.vue')['default']
@@ -71,5 +72,6 @@ declare module 'vue' {
     Test: typeof import('./components/graduation_project/achieve/function/test.vue')['default']
     TrainingCountCard: typeof import('./components/graduation_project/spider/bottom_card/TrainingCountCard.vue')['default']
     WaterDrop: typeof import('./components/graduation_project/achieve/animated/WaterDrop.vue')['default']
+    WordCloud: typeof import('./components/graduation_project/achieve/page/job_detail/WordCloud.vue')['default']
   }
 }

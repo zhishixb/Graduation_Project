@@ -18,7 +18,9 @@
       class="right-panel"
       :class="{ 'fade-in': showPanels }"
     >
+      <div style="margin-top: 180px"></div>
       <MatchList :data="matchList" />
+      <CommunityRecognition style="margin-top: 20px" v-if="communityComment" :data="communityComment" />
     </div>
 
     <!-- 地图动画区域 -->
@@ -37,8 +39,9 @@ import { ref, computed, onMounted } from 'vue'
 import Map from '@/components/graduation_project/achieve/animated/Diagram.vue'
 import MatchList from '@/components/graduation_project/achieve/page/major_detail/MatchList.vue'
 import MajorInfoPanel from '@/components/graduation_project/achieve/page/major_detail/MajorInfoPanel.vue'
+import CommunityRecognition from '@/components/graduation_project/achieve/page/major_detail/CommunityRecognition.vue'
 import { useDataStore } from '@/stores/achieve/dataStore.ts'
-import { getFunctionsByMajor, getMajorData, getJobProvinceCount } from "@/apis/business.ts"
+import { getFunctionsByMajor, getMajorData, getJobProvinceCount, getSentimentAnalysis } from "@/apis/business.ts"
 
 const store = useDataStore()
 const stage = ref<'initial' | 'scaled' | 'moved'>('initial')
@@ -48,6 +51,7 @@ let scaledEnded = false
 const majorData = ref()
 const matchList = ref()
 const provinceData = ref()
+const communityComment = ref()
 
 const stageClass = computed(() => {
   if (stage.value === 'moved') return 'scaled moved'
@@ -76,6 +80,8 @@ onMounted(async () => {
   const functionNameList = matchList.value.map(item => item.function_name);
   const res_3 = await getJobProvinceCount(functionNameList)
   provinceData.value = res_3.data
+  const res_4 = await getSentimentAnalysis(major)
+  communityComment.value = res_4.data
   setTimeout(() => store.isLoading = false, 400)
   setTimeout(() => {
     requestAnimationFrame(() => {
@@ -135,11 +141,10 @@ onMounted(async () => {
 /* 右侧面板：left 同步至 330px */
 .right-panel {
   position: absolute;
-  left: 300px;           /* 紧贴左侧 330px */
+  left: 330px;           /* 紧贴左侧 330px */
   top: 0;
-  width: 300px;
+  width: 420px;
   height: 100%;
-  padding: 20px 16px;
   overflow-y: auto;
   z-index: 1;
   pointer-events: auto;

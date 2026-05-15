@@ -1,265 +1,184 @@
 <template>
-  <div class="hot-major-list-container">
-    <!-- 标题栏 -->
-    <div class="list-header">
-      <div class="header-left">
-        <span class="header-icon">🔥</span>
-        <h3 class="header-title">热门专业排行</h3>
-      </div>
-      <span class="header-badge">本周更新</span>
+  <div class="hot-major-page">
+    <div class="page-header">
+      <h1 class="page-title">
+        <n-icon size="24" class="title-icon">
+          <ThermometerOutline />
+        </n-icon>
+        热门专业排行
+      </h1>
     </div>
-
-    <!-- 列表区域（可滚动） -->
-    <div class="list-scroll-area">
+    <div class="list-container">
+      <div v-if="majors.length === 0" class="empty-tip">加载中...</div>
       <div
-        v-for="(item, index) in majorList"
-        :key="item.id"
-        class="major-item"
-        :style="{ animationDelay: `${index * 0.08}s` }"
+        v-for="(item, idx) in majors"
+        :key="idx"
+        class="major-row"
+        @click="handleClick(item.name)"
       >
-        <!-- 排名 -->
-        <div class="rank-badge" :class="getRankClass(index)">
-          <span v-if="index === 0">👑</span>
-          <span v-else-if="index === 1">🥈</span>
-          <span v-else-if="index === 2">🥉</span>
-          <span v-else>{{ index + 1 }}</span>
-        </div>
-
-        <!-- 专业信息 -->
-        <div class="major-info">
-          <div class="major-name">{{ item.name }}</div>
-          <div class="major-category">{{ item.category }}</div>
-        </div>
-
-        <!-- 热度进度条 -->
-        <div class="hotness-bar-wrapper">
-          <div class="hotness-bar">
-            <div
-              class="hotness-fill"
-              :style="{ width: item.hotness + '%', background: item.color }"
-            ></div>
-          </div>
-          <span class="hotness-value">{{ item.hotness }}%</span>
-        </div>
+        <span class="row-rank" :style="{ background: rankColor(idx) }">{{ idx + 1 }}</span>
+        <span class="row-name">{{ item.name }}</span>
+        <span class="row-heat">{{ formatHeat(item.heat_value) }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { NIcon } from 'naive-ui'
+import { ThermometerOutline } from '@vicons/ionicons5'
+import { useDataStore } from '@/stores/achieve/dataStore.ts'
+import { getHotMajors } from '@/apis/business.ts'
 
-interface MajorItem {
-  id: number
+const store = useDataStore()
+
+interface MajorHeatItem {
   name: string
-  category: string
-  hotness: number
-  color: string
+  heat_value: number
 }
 
-const majorList = ref<MajorItem[]>([
-  { id: 1, name: '人工智能', category: '计算机科学', hotness: 98, color: '#FF6B6B' },
-  { id: 2, name: '数据科学', category: '统计学', hotness: 92, color: '#4ECDC4' },
-  { id: 3, name: '金融科技', category: '金融学', hotness: 87, color: '#FFD93D' },
-  { id: 4, name: '新能源科学', category: '能源工程', hotness: 83, color: '#6C5CE7' },
-  { id: 5, name: '生物医学工程', category: '生物工程', hotness: 79, color: '#A8E6CF' },
-  { id: 6, name: '机器人工程', category: '自动化', hotness: 75, color: '#FF8B94' },
-  { id: 7, name: '数字媒体艺术', category: '设计学', hotness: 71, color: '#B8A9C9' },
-  { id: 8, name: '网络安全', category: '计算机科学', hotness: 68, color: '#55E6C1' },
-])
+const majors = ref<MajorHeatItem[]>([])
 
-function getRankClass(index: number) {
-  if (index === 0) return 'rank-gold'
-  if (index === 1) return 'rank-silver'
-  if (index === 2) return 'rank-bronze'
-  return 'rank-normal'
+// 排名颜色数组（可自定义，共30个色，这里给出前10个常用色，后面循环）
+const rankColors = [
+  '#FF6B6B', '#FF8E53', '#FFD93D', '#6BCB77', '#4D96FF',
+  '#9B59B6', '#34495E', '#E67E22', '#1ABC9C', '#F368E0',
+  '#FF4757', '#FF6348', '#FFC048', '#2ED573', '#1E90FF',
+  '#A29BFE', '#6C5CE7', '#00CEC9', '#55EFC4', '#FAB1A0',
+  '#FF7675', '#FDCB6E', '#00B894', '#0984E3', '#6C5CE7',
+  '#E056A0', '#0ABDE3', '#10AC84', '#F368E0', '#FF9FF3'
+]
+
+const formatHeat = (value: number): string => {
+  if (value >= 10000) {
+    return (value / 10000).toFixed(1).replace(/\.0$/, '') + '万'
+  }
+  return value.toString()
 }
+
+const rankColor = (index: number): string => {
+  return rankColors[index % rankColors.length]
+}
+
+const handleClick = (name: string) => {
+  store.selectMajorName(name)
+  store.isLoading = true
+  setTimeout(() => {
+    store.turnToPage('majorDetail')
+  }, 400)
+}
+
+onMounted(async () => {
+  try {
+    const res = await getHotMajors(30)
+    if (res.success && Array.isArray(res.data?.majors)) {
+      majors.value = res.data.majors
+    }
+  } catch (e) {
+    console.error('获取热门专业失败', e)
+  }
+  setTimeout(() => store.isLoading = false, 400)
+})
 </script>
 
 <style scoped>
-/* 容器保持原尺寸 */
-.hot-major-list-container {
-  width: 648px;
-  height: 464px;
-  background: #ffffff;
-  border-radius: 24px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.06);
-  padding: 24px;
-  box-sizing: border-box;
-  overflow: hidden;
+.hot-major-page {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f9f9fc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;           /* 防止 body 滚动 */
 }
 
-/* 头部 */
-.list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+.page-header {
+  padding: 24px 32px 16px;
+  flex-shrink: 0;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-icon {
-  font-size: 24px;
-  line-height: 1;
-}
-
-.header-title {
-  font-size: 18px;
+.page-title {
+  font-size: 26px;
   font-weight: 700;
-  color: #2D3436;
+  color: #1a1a2e;
   margin: 0;
+  display: flex;
+  align-items: center;
 }
 
-.header-badge {
-  background: #F0F0F5;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  color: #888;
-  font-weight: 500;
+.title-icon {
+  margin-right: 8px;
 }
 
-/* 可滚动列表区域 */
-.list-scroll-area {
+.list-container {
   flex: 1;
+  min-height: 0;              /* 关键：允许 flex 子元素收缩以显示滚动条 */
   overflow-y: auto;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: #E0E0E0 transparent;
+  padding: 0 32px 24px;
 }
 
-.list-scroll-area::-webkit-scrollbar {
-  width: 4px;
+.empty-tip {
+  text-align: center;
+  color: #999;
+  margin-top: 60px;
+  font-size: 15px;
 }
 
-.list-scroll-area::-webkit-scrollbar-thumb {
-  background: #E0E0E0;
-  border-radius: 4px;
-}
-
-/* 单个列表项 */
-.major-item {
+.major-row {
   display: flex;
   align-items: center;
   padding: 14px 16px;
-  background: #FAFAFC;
-  border-radius: 16px;
-  margin-bottom: 10px;
-  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
-  animation: fadeInUp 0.4s ease backwards;
+  margin-bottom: 4px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
 }
 
-.major-item:hover {
-  background: #F0F0FF;
-  transform: translateX(6px);
-  box-shadow: 0 8px 20px rgba(108, 92, 231, 0.08);
+.major-row:hover {
+  background: #f0f2ff;
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.12);
 }
 
-/* 入场动画 */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 排名徽章 */
-.rank-badge {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+.row-rank {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  font-weight: 700;
-  margin-right: 14px;
-  flex-shrink: 0;
-}
-
-.rank-gold {
-  background: linear-gradient(135deg, #FFD700, #FFA500);
-  color: white;
-}
-
-.rank-silver {
-  background: linear-gradient(135deg, #C0C0C0, #A9A9A9);
-  color: white;
-}
-
-.rank-bronze {
-  background: linear-gradient(135deg, #CD7F32, #B87333);
-  color: white;
-}
-
-.rank-normal {
-  background: #E4E6F0;
-  color: #666;
+  color: #fff;
+  border-radius: 6px;          /* 圆角正方形 */
   font-size: 14px;
-}
-
-/* 专业信息 */
-.major-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.major-name {
-  font-size: 15px;
   font-weight: 600;
-  color: #2D3436;
-  margin-bottom: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.major-category {
-  font-size: 12px;
-  color: #999;
-}
-
-/* 热度条 */
-.hotness-bar-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 140px;
   flex-shrink: 0;
+  margin-right: 16px;
 }
 
-.hotness-bar {
+.row-name {
   flex: 1;
-  height: 6px;
-  background: #E8ECF1;
-  border-radius: 3px;
-  overflow: hidden;
+  font-size: 16px;
+  font-weight: 500;
+  color: #2c3e50;
 }
 
-.hotness-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.6s ease;
-}
-
-.hotness-value {
-  font-size: 12px;
+.row-heat {
+  font-size: 14px;
   font-weight: 600;
-  color: #666;
-  min-width: 34px;
-  text-align: right;
+  color: #6C5CE7;
+  margin-left: 16px;
+}
+
+/* 滚动条美化 */
+.list-container::-webkit-scrollbar {
+  width: 6px;
+}
+.list-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.list-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
 }
 </style>

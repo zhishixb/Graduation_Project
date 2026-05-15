@@ -1,5 +1,6 @@
 <template>
   <div class="majordetail-content">
+    <!-- 左侧岗位详情面板 -->
     <div
       v-if="jobData"
       class="left-panel"
@@ -10,12 +11,15 @@
       />
     </div>
 
+    <!-- 右侧匹配专业 + 词云面板 -->
     <div
       v-if="matchList"
       class="right-panel"
       :class="{ 'fade-in': showPanels }"
     >
+      <div style="margin-top: 135px"></div>
       <MatchList :data="matchList" />
+      <WordCloud style="margin-left: -50px" :data="wordCloud" :width="360" :height="280" />
     </div>
 
     <!-- 地图动画区域 -->
@@ -33,9 +37,15 @@
 import { ref, computed, onMounted } from 'vue'
 import Map from '@/components/graduation_project/achieve/animated/Diagram.vue'
 import MatchList from '@/components/graduation_project/achieve/page/job_detail/MatchList.vue'
+import WordCloud from '@/components/graduation_project/achieve/page/job_detail/WordCloud.vue'
 import JobInfoPanel from '@/components/graduation_project/achieve/page/job_detail/JobInfoPanel.vue'
 import { useDataStore } from '@/stores/achieve/dataStore.ts'
-import {getJobProvinceCount, getJobSkills, getMajorsByFunction} from "@/apis/business.ts"
+import {
+  getJobProvinceCount,
+  getJobSkills,
+  getMajorsByFunction,
+  getJobSkillsCount
+} from "@/apis/business.ts"
 
 const store = useDataStore()
 const stage = ref<'initial' | 'scaled' | 'moved'>('initial')
@@ -44,6 +54,7 @@ let scaledEnded = false
 
 const jobData = ref()
 const matchList = ref()
+const wordCloud = ref<{ name: string; value: number }[]>([])
 const provinceData = ref()
 
 const stageClass = computed(() => {
@@ -80,10 +91,23 @@ onMounted(async () => {
   const res_2 = await getMajorsByFunction(jobData.value.function_name)
   matchList.value = Array.isArray(res_2.data) ? res_2.data : []
 
-  // 构造岗位名称数组（用 let 声明，并直接赋值数组字面量）
+  // 构造岗位名称数组
   const functionNameList = [jobData.value.function_name]
   const res_3 = await getJobProvinceCount(functionNameList)
   provinceData.value = res_3.data
+
+  // 获取技能词频数据（需 uid）
+  if (jobData.value?.uid) {
+    const res_4 = await getJobSkillsCount(jobData.value.uid)
+    if (res_4.success && Array.isArray(res_4.data?.skills)) {
+      wordCloud.value = res_4.data.skills.map((item: { skill: string; count: number }) => ({
+        name: item.skill,
+        value: item.count
+      }))
+    }
+  } else {
+    console.warn('jobData 缺少 uid，无法获取技能词频')
+  }
 
   setTimeout(() => store.isLoading = false, 400)
   setTimeout(() => {
@@ -114,14 +138,14 @@ onMounted(async () => {
   transition-delay: 0.8s;
 }
 
-/* 左侧面板：330px，自带滚动 */
+/* 左侧面板 */
 .left-panel {
   position: absolute;
   left: 0;
   top: 0;
-  width: 300px;          /* 由 300px 改为 330px */
+  width: 300px;
   height: 100%;
-  overflow-y: auto;       /* 开启纵向滚动 */
+  overflow-y: auto;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   z-index: 1;
@@ -141,14 +165,13 @@ onMounted(async () => {
   border-radius: 2px;
 }
 
-/* 右侧面板：left 同步至 330px */
+/* 右侧面板 */
 .right-panel {
   position: absolute;
-  left: 300px;           /* 紧贴左侧 330px */
+  left: 330px;
   top: 0;
-  width: 300px;
+  width: 400px;
   height: 100%;
-  padding: 20px 16px;
   overflow-y: auto;
   z-index: 1;
   pointer-events: auto;

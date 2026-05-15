@@ -41,7 +41,7 @@ export const getJobProvinceCount = (jobNames) => {
   })
 }
 
-export const getJobSkills = (uid) => {
+export const getJobSkills = (uid: string) => {
   return request.post('/achieve/job-skills', {
     uid: uid
   })
@@ -115,4 +115,31 @@ export const getMajorJobAggregatedScore = (majorName: string, functionName: stri
     majorName,
     functionName
   })
+}
+
+/**
+ * 根据岗位 uid 获取岗位技能及出现次数
+ * @param uid - 岗位唯一标识
+ * @returns Promise<ApiResponse<SkillByUidCountResponse>>
+ */
+export const getJobSkillsCount = (uid: string) => {
+  return request.post('/achieve/job-skills-count', { uid })
+}
+
+/**
+ * 获取热门专业列表
+ * @param limit 返回数量，默认30，范围1-100
+ * @returns Promise<ApiResponse<MajorHeatListResponse>>
+ */
+export const getHotMajors = (limit: number = 30) => {
+  return request.get('/achieve/hot-majors', { params: { limit } })
+}
+
+/**
+ * 获取指定专业的情感分析数据
+ * @param major - 专业名称
+ * @returns Promise<ApiResponse<SentimentResponse>>
+ */
+export const getSentimentAnalysis = (major: string) => {
+  return request.post('/achieve/sentiment-analysis', { major })
 }

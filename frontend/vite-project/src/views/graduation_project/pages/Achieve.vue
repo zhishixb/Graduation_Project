@@ -34,6 +34,7 @@
         <MajorDetail v-if="store.toMajorDetail"></MajorDetail>
         <PositionDetail v-if="store.toPositionDetail"></PositionDetail>
         <ComparePage v-if="store.toComparePage"></ComparePage>
+        <HotMajorList v-if="store.toHotMajor"></HotMajorList>
       </div>
      
     </main>
@@ -45,6 +46,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { useDataStore } from '@/stores/achieve/dataStore.ts';
 import Map from "@/components/graduation_project/achieve/map/Map.vue";
 import DashBoard from "@/components/graduation_project/achieve/content/DashBoard.vue";
+import HotMajorList from "@/components/graduation_project/achieve/content/HotMajorList.vue";
 import MajorDetail from '@/components/graduation_project/achieve/content/MajorDetail.vue';
 import PositionDetail from '@/components/graduation_project/achieve/content/PositionDetail.vue';
 import ComparePage from '@/components/graduation_project/achieve/content/ComparePage.vue';

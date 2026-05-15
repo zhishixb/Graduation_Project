@@ -31,6 +31,8 @@ import TrainingCountCard from  "@/components/graduation_project/spider/bottom_ca
 <style scoped>
 
 .spider-container{
+  margin-left: 120px;
+  margin-top: 60px;
   width: 980px;
   height: 560px;
   display: flex;

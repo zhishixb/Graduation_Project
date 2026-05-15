@@ -92,6 +92,23 @@ class SkillExtractor:
                 categories.append(cat)
         return {"skills": skill_list, "categories": categories}
 
-    def extract_from_texts(self, texts: List[str]) -> List[List[str]]:
-        """批量提取，返回每条文本对应的技能词列表"""
-        return [self.extract_from_text(text) for text in texts]
+    def extract_skills_with_count(self, text: str) -> List[Dict[str, Union[str, int]]]:
+        """
+        提取技能词并统计出现次数，返回列表：
+        [
+            {"skill": "Python", "count": 3},
+            {"skill": "Java", "count": 2},
+            ...
+        ]
+        按出现次数降序排列。
+        """
+        if not isinstance(text, str) or not text.strip():
+            return []
+        matches = self.pattern.findall(text)
+        count_map: Dict[str, int] = {}
+        for m in matches:
+            standard = self.skill_map.get(m.lower(), m)
+            count_map[standard] = count_map.get(standard, 0) + 1
+        result = [{"skill": k, "count": v} for k, v in count_map.items()]
+        result.sort(key=lambda x: x["count"], reverse=True)
+        return result

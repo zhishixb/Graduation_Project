@@ -31,3 +31,21 @@ class JobSkillService:
             "skills": result["skills"],
             "category": result["categories"]  # 新增分类字段
         }
+
+    def get_skills_with_count_by_uid(self, uid: int) -> dict:
+        function_name = self._job_list.get_job_name_by_uid(uid)
+        if not function_name:
+            return {"error": "未找到对应岗位"}
+
+        text = self._csv_repo.get_merged_text_by_function(function_name)
+        if text is None:
+            return {"error": f"未找到 {function_name} 的文本数据"}
+
+        skills_with_count = self._skill.extract_skills_with_count(text)
+
+        return {
+            "uid": uid,
+            "function_name": function_name,
+            "skills": skills_with_count  # List[{"skill":…, "count":…}]
+        }
+

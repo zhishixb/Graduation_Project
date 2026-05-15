@@ -48,6 +48,14 @@ class SkillByUidResponse(BaseModel):
     skills: List[str]
     category: List[str]
 
+class SkillCountItem(BaseModel):
+    skill: str
+    count: int
+
+class SkillByUidCountResponse(BaseModel):
+    uid: int
+    function_name: str
+    skills: List[SkillCountItem]
 
 class VectorMatchRequest(BaseModel):
     majorName: str
@@ -108,3 +116,24 @@ class MatchAggregatedScoreResponse(BaseModel):
 class MatchAggregatedScoreRequest(BaseModel):
     majorName: str
     functionName: str
+
+
+class MajorHeatItem(BaseModel):
+    name: str
+    heat_value: int
+
+class MajorHeatListResponse(BaseModel):
+    majors: List[MajorHeatItem]
+
+
+class SentimentRequest(BaseModel):
+    major: str
+
+class SentimentResponse(BaseModel):
+    major: str
+    weighted_pos_total: float
+    weighted_neg_total: float
+    total_likes: int
+    record_count: int
+    positive_ratio: float      # 正面情感占比
+    avg_likes: float           # 平均点赞数

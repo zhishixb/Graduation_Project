@@ -2,20 +2,23 @@
 import csv
 import re
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from backend.business.models.schemas import MajorIntroChunk
 from backend.business.models.exceptions import ConfigFileNotFoundError, MajorNotFoundError
+from backend.business.repository.major_repository import MajorRepository
 
 
 class MajorDataService:
     """提供专业介绍查询与解析服务"""
 
-    def __init__(self, csv_path: Path):
+    def __init__(self, csv_path: Path, major_repo: Optional[MajorRepository] = None):
         """
-        :param csv_path: major_data.csv 的文件路径 (Path对象)
+        :param csv_path: major_data.csv 的文件路径
+        :param major_repo: 可选的数据库仓库实例，用于查询热度等数据
         """
         self._csv_path = csv_path
+        self._major_repo = major_repo
         self._major_dict: Optional[Dict[str, str]] = None  # 缓存：{专业名称: 介绍原文}
 
     def _load_data(self) -> Dict[str, str]:
@@ -92,3 +95,9 @@ class MajorDataService:
         """
         full_intro = self.get_intro_by_major(major_name)
         return self.parse_intro_to_chunk(full_intro)
+
+    def get_hot_majors(self, limit: int = 30) -> List[Dict[str, object]]:
+        """返回热度最高的前 N 条专业名称及热度值"""
+        if self._major_repo is None:
+            raise RuntimeError("MajorRepository 未注入，无法查询热度数据")
+        return self._major_repo.get_top_majors_by_heat(limit)

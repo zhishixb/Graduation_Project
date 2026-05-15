@@ -8,12 +8,15 @@ from backend.business.models.schemas import FunctionSimilarity, MajorSimilarity,
     ProvinceCount, SkillByUidRequest, SkillByUidResponse, VectorMatchRequest, VectorMatchResponse, VectorMatchItem, \
     SimilarityQueryRequest, MajorFunctionSimilarity, ExplanationItem, MatchExplainResponse, MatchExplainRequest, \
     DomainScore, DomainMatchingResponse, DomainMatchingRequest, MatchAggregatedScoreResponse, \
-    MatchAggregatedScoreRequest
+    MatchAggregatedScoreRequest, SkillByUidCountResponse, SkillCountItem, MajorHeatListResponse, MajorHeatItem, \
+    SentimentRequest, SentimentResponse
 from backend.business.models.api_response import ApiResponse
 from backend.business.repository.job_data_repository import JobDataRepository
 from backend.business.repository.job_list_repository import JobListRepository
 from backend.business.repository.job_location_repository import JobLocationRepository
 from backend.business.repository.job_major_repository import JobMajorRepository
+from backend.business.repository.major_repository import MajorRepository
+from backend.business.repository.sentiment_repository import SentimentRepository
 from backend.business.repository.vector_repository import VectorRepository
 from backend.business.services.job_data_service import JobSkillService
 from backend.business.services.job_list_service import JobListService
@@ -22,6 +25,7 @@ from backend.business.services.job_major_service import JobMajorService
 from backend.business.services.major_data_service import MajorDataService
 from backend.business.services.major_status_service import MajorStatusService
 from backend.business.services.match_explain_service import MatchExplainService
+from backend.business.services.sentiment_service import SentimentService
 from backend.business.services.vector_match_service import VectorMatchService
 from backend.business.utils.skill_extractor import SkillExtractor
 
@@ -36,8 +40,13 @@ _major_status_service = MajorStatusService(
     _PROJECT_ROOT / 'data' / 'json' / '51job_major_status.json'
 )
 
+_major_repo = MajorRepository(
+    _PROJECT_ROOT / 'data' / 'db' / 'majors.db'
+)
+
 _major_data_service = MajorDataService(
-    _PROJECT_ROOT / 'data' / 'csv' / 'major_data.csv'
+    _PROJECT_ROOT / 'data' / 'csv' / 'major_data.csv',
+    _major_repo
 )
 
 _skill_extractor = SkillExtractor(
@@ -66,10 +75,14 @@ _match_explain_service = MatchExplainService(
     major_data_service=_major_data_service,
     job_data_repo=_job_data_repo_csv,
     model_path=_PROJECT_ROOT / 'models' / 'bge_m3' / 'bge-m3',
-    lora_path=_PROJECT_ROOT / 'models' / 'bge_m3' / 'bge-m3-lora-256-20'
-    if (_PROJECT_ROOT / 'models' / 'bge_m3' / 'bge-m3-lora-256-20').exists()
+    lora_path=_PROJECT_ROOT / 'models' / 'bge_m3' / 'bge-m3-latest'
+    if (_PROJECT_ROOT / 'models' / 'bge_m3' / 'bge-m3-latest').exists()
     else None
 )
+
+def get_sentiment_repository():
+    db_path = _PROJECT_ROOT / 'data' / 'db' / 'sentiment_analysis.db'   # 根据实际路径调整
+    return SentimentRepository(db_path)
 
 # ---------- 依赖注入 ----------
 def get_repository():
@@ -120,6 +133,9 @@ def get_match_service() -> VectorMatchService:
 
 def get_match_explain_service() -> MatchExplainService:
     return _match_explain_service
+
+def get_sentiment_service(repo: SentimentRepository = Depends(get_sentiment_repository)) -> SentimentService :
+    return SentimentService(repo)
 
 # ---------- 路由（Controller）----------
 @router.get("/by-major/{major_name}", response_model=ApiResponse[List[FunctionSimilarity]])
@@ -293,3 +309,41 @@ def get_major_job_aggregated_score(
         ),
         message="OK"
     )
+
+@router.post("/job-skills-count", response_model=ApiResponse[SkillByUidCountResponse])
+def get_job_skills_count(
+    req: SkillByUidRequest,          # 复用 uid 请求模型
+    service: JobSkillService = Depends(get_job_skill_service)
+):
+    result = service.get_skills_with_count_by_uid(req.uid)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    return ApiResponse(
+        success=True,
+        data=SkillByUidCountResponse(
+            uid=result["uid"],
+            function_name=result["function_name"],
+            skills=[SkillCountItem(**item) for item in result["skills"]]
+        ),
+        message="OK"
+    )
+
+@router.get("/hot-majors", response_model=ApiResponse[MajorHeatListResponse])
+def hot_majors(
+    limit: int = Query(30, ge=1, le=100),
+    service: MajorDataService = Depends(get_major_data_service)
+):
+    items = service.get_hot_majors(limit)
+    majors = [MajorHeatItem(**item) for item in items]
+    return ApiResponse(success=True, data=MajorHeatListResponse(majors=majors), message="OK")
+
+@router.post("/sentiment-analysis", response_model=ApiResponse[SentimentResponse])
+def sentiment_analysis(
+    req: SentimentRequest,
+    service: SentimentService = Depends(get_sentiment_service)
+):
+    data = service.get_sentiment_analysis(req.major)
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"专业 {req.major} 的情感数据不存在")
+    return ApiResponse(success=True, data=SentimentResponse(**data), message="OK")
